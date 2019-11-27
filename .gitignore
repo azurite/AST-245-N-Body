@@ -1,0 +1,6 @@
+# executable files
+*.out
+
+# files containing the data for the simulation
+data/*.ascii
+data/*.dat
