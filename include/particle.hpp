@@ -43,6 +43,9 @@ public:
   float pot();
   void set_pot(float p);
 
+  float radius2();
+  float radius();
+
   std::string toString() const;
   void print() const;
 

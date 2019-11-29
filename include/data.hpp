@@ -8,7 +8,7 @@
 class Data
 {
 public:
-  static const std::vector<Particle> *readFromFile(const std::string &filename);
+  static std::vector<Particle> *readFromFile(const std::string &filename);
 };
 
 #endif // DATA_H

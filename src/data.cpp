@@ -17,7 +17,7 @@
 * potential[i]
 */
 
-const std::vector<Particle> *Data::readFromFile(const std::string &filename)
+std::vector<Particle> *Data::readFromFile(const std::string &filename)
 {
   std::vector<float> mass;
   std::vector<float> x;

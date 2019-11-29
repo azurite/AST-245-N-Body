@@ -132,6 +132,16 @@ void Particle::set_pot(float p)
   potential = p;
 }
 
+float Particle::radius2()
+{
+  return pos.squaredNorm();
+}
+
+float Particle::radius()
+{
+  return pos.norm();
+}
+
 std::string Particle::toString() const
 {
   return "{ mass=" +
