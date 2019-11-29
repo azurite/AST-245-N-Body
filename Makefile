@@ -13,10 +13,10 @@ LDIR = lib
 CXX = g++
 CXXFLAGS = -I /usr/include/eigen3 -I $(IDIR)
 
-_DEPS = data.hpp
+_DEPS = data.hpp particle.hpp
 DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))
 
-_OBJ = main.o data.o
+_OBJ = main.o data.o particle.o
 OBJ = $(patsubst %, $(ODIR)/%, $(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
