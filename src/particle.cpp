@@ -132,7 +132,7 @@ void Particle::set_pot(float p)
   potential = p;
 }
 
-std::string Particle::toString()
+std::string Particle::toString() const
 {
   return "{ mass=" +
   std::to_string(mass) + ", x=" +
@@ -144,7 +144,13 @@ std::string Particle::toString()
   std::to_string(velocity(2)) + " }";
 }
 
-void Particle::print()
+void Particle::print() const
 {
-  std:: cout << this->toString() << std::endl;
+  std::cout << toString() << std::endl;
+}
+
+std::ostream &operator<<(std::ostream &os, const Particle &p)
+{
+  os << p.toString() << std::endl;
+  return os;
 }

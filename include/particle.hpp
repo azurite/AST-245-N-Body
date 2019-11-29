@@ -1,3 +1,4 @@
+#include <iostream>
 #include <Eigen/Dense>
 
 using Eigen::Vector3f;
@@ -42,8 +43,10 @@ public:
   float pot();
   void set_pot(float p);
 
-  std::string toString();
-  void print();
+  std::string toString() const;
+  void print() const;
+
+  friend std::ostream &operator<<(std::ostream &os, const Particle &p);
 };
 
 #endif // PARTICLE_H
