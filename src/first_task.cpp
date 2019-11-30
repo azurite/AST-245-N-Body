@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <math.h>
 #include <cmath>
+#include <mgl2/mgl.h>
+
 #include <data.hpp>
 #include <particle.hpp>
 #include <first_task.hpp>
@@ -25,9 +27,6 @@ float density_numeric(float r)
     if(p.radius2() <= r * r) {
       M += p.m();
     }
-    else {
-      break;
-    }
   }
 
   return M / V;
@@ -38,40 +37,81 @@ float density_hernquist(float r)
   return totalMass / (2 * M_PI) * (scaleLength / r) * (1 / std::pow(r + scaleLength, 3));
 }
 
-// https://astronomy.swin.edu.au/cms/astro/cosmos/S/Scale+Length
-// TODO: This is probably not correct as the scale length is neglegile compared to the radius
-// try the 0.45 * radius from the paper
-float calc_scale_length()
+void step1_calculate()
 {
-  float r = 0.05;
-  float rho_center = density_numeric(r);
-  float rho_curr = rho_center;
-
-  while(rho_center < M_E * rho_curr) {
-    r += 0.05;
-    rho_curr = density_numeric(r);
+  // compute total mass and radius of the system
+  for(Particle &p : particles) {
+    totalMass += p.m();
+    radius = std::max(p.radius2(), radius);
   }
 
-  return r;
+  radius = std::sqrt(radius);
+  scaleLength = radius * 0.45;
+
+  std::cout << "First Task STEP 1 " << std::endl;
+  std::cout << "------------------" << std::endl;
+  std::cout << "  totalMass:      " << totalMass << std::endl;
+  std::cout << "  radius:         " << radius << std::endl;
+  std::cout << "  scaleLength:    " << scaleLength << std::endl;
+  std::cout << "------------------" << std::endl;
+}
+
+void step1_plot()
+{
+  int numSteps = 1000;
+  std::vector<float> hDensity;
+  std::vector<float> nDensity;
+  std::vector<float> rInput;
+
+  for(float r = 0.001; r < radius; r += (radius / numSteps)) {
+      float h_rho = density_hernquist(r);
+      float n_rho = density_numeric(r);
+
+      rInput.push_back(r);
+      hDensity.push_back(h_rho);
+      nDensity.push_back(n_rho);
+  }
+
+  mglData hData;
+  hData.Set(hDensity.data(), hDensity.size());
+
+  mglData nData;
+  nData.Set(nDensity.data(), nDensity.size());
+
+  mglData rData;
+  rData.Set(rInput.data(), rInput.size());
+
+  mglGraph gr;
+
+  gr.SetRange('x', rData);
+  gr.SetRange('y', hData);
+  gr.SetFunc("", "lg(y)");
+  gr.Adjust("y");
+  gr.Axis();
+
+  gr.Plot(hData, "b");
+  gr.AddLegend("Hernquist", "b");
+
+  gr.Plot(nData, "r");
+  gr.AddLegend("Numeric", "r");
+
+  gr.Legend();
+  gr.WriteFrame("density_profiles.png");
+}
+
+void first_task_step1()
+{
+    step1_calculate();
+    step1_plot();
+}
+
+void first_task_step2()
+{
+
 }
 
 void first_task()
 {
-  // sort particles from the inner most to the outer most
-  std::sort(particles.begin(), particles.end(), [](Particle &a, Particle &b){
-    //return a.x()*a.x() + a.y()*a.y() + a.z()*a.z() < b.x()*b.x() + b.y()*b.y() + b.z()*b.z();
-    return a.radius2() < b.radius2();
-  });
-
-  // compute total mass and radius of the system
-  for(Particle &p : particles) {
-    totalMass += p.m();
-  }
-
-  radius = particles.back().radius();
-  scaleLength = calc_scale_length();
-
-  std::cout << "totalMass: " << totalMass << std::endl;
-  std::cout << "radius: " << radius << std::endl;
-  std::cout << "scaleLength: " << scaleLength << std::endl;
+  first_task_step1();
+  //first_task_step2();
 }

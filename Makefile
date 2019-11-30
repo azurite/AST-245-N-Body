@@ -9,6 +9,7 @@ IDIR = include
 SDIR = src
 ODIR = obj
 LDIR = lib
+LIBS = -lmgl2
 
 CXX = g++
 CXXFLAGS = -I /usr/include/eigen3 -I $(IDIR)
@@ -20,10 +21,10 @@ _OBJ = main.o data.o particle.o first_task.o
 OBJ = $(patsubst %, $(ODIR)/%, $(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(LIBS) -c -o $@ $<
 
 main: $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $@.out $^
+	$(CXX) $(CXXFLAGS) $(LIBS) -o $@.out $^
 
 .PHONY: clean
 
