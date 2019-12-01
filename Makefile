@@ -12,7 +12,7 @@ LDIR = lib
 LIBS = -lmgl2
 
 CXX = g++
-CXXFLAGS = -I /usr/include/eigen3 -I $(IDIR)
+CXXFLAGS = -I /usr/include/eigen3 -I $(IDIR) -g
 
 _DEPS = data.hpp particle.hpp first_task.hpp
 DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))
