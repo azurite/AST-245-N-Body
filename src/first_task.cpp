@@ -12,6 +12,47 @@
 
 using Eigen::Vector3f;
 
+void writeNBody(std::vector<float> *a, float eps, const std::string &filename)
+{
+  std::ofstream outfile("data/" + filename);
+
+  if(outfile.is_open()) {
+    outfile << a->size() << " " << eps << "\n";
+
+    for(int i = 0; i < a->size(); i++) {
+      outfile << a->at(i) << "\n";
+    }
+
+    outfile.close();
+  }
+  else {
+    std::cout << "could not write to file" << std::endl;
+  }
+}
+
+std::vector<float> *readNBody(const std::string &filename)
+{
+  std::ifstream infile("data/" + filename);
+
+  if(infile.is_open()) {
+    int size;
+    infile >> size;
+
+    std::vector<float> *a = new std::vector<float>(size + 1, 0.0);
+    infile >> (*a)[0];
+
+    for(int i = 1; i < size + 1; i++) {
+      infile >> (*a)[i];
+    }
+
+    return a;
+  }
+  else {
+    std::cout << "could not read from file" << std::endl;
+    return NULL;
+  }
+}
+
 std::unique_ptr<std::vector<Particle>> p(Data::readFromFile("data.ascii"));
 std::vector<Particle> particles = *p;
 
@@ -19,13 +60,13 @@ float totalMass = 0.0;
 float radius = 0.0;
 float scaleLength = 0.0;
 float epsilon = 0.0; // softening
-float r0 = 10; // center of system to avoid problems with dividing by 0
+float r0 = 0.1; // center of system to avoid problems with dividing by 0
 
 // because computing the N-Boby forces is an n^2 algorithm it can take quite long to run depending
 // on the hardware. The blockSize variable specifies what fraction of particles
 // is going to be used. F.ex a blockSize of 10 means we only take every 10th element
 // if blockSize = 1 this corresponds to taking all particles into consideration
-int blockSize = 5;
+int blockSize = 1;
 
 float density_numeric(float r)
 {
@@ -62,7 +103,7 @@ void calculate_constants()
   // after plugging in n = totalMass / (4/3*PI*r^3) in the formula most terms cancel out
   epsilon = radius / std::pow(totalMass, 1.0/3.0);
 
-  std::cout << "First Task STEP 1 " << std::endl;
+  std::cout << "First Task        " << std::endl;
   std::cout << "------------------" << std::endl;
   std::cout << "  totalMass:      " << totalMass << std::endl;
   std::cout << "  radius:         " << radius << std::endl;
@@ -71,14 +112,24 @@ void calculate_constants()
   std::cout << "------------------" << std::endl;
 }
 
-std::vector<float> *force_n_body()
+std::vector<float> *force_n_body(const std::string &fname)
 {
-  std::vector<float> *a = new std::vector<float>(particles.size(), 0.0);
+  std::vector<float> *a = readNBody(fname);
+
+  if(a != NULL) {
+    epsilon = a->front();
+    a->erase(a->begin());
+
+    std::cout << "using n-body forces from file" << std::endl;
+    return a;
+  }
+
+  a = new std::vector<float>(particles.size(), 0.0);
 
   for(int i = 0; i <= particles.size() - blockSize; i += blockSize) {
     Vector3f ai(.0, .0, .0);
 
-    for(int j = 0; j <= particles.size() - blockSize; j += blockSize) {
+    for(int j = 0; j < particles.size(); j++) {
       if(i != j) {
         Vector3f rij = particles[j].r() - particles[i].r();
         float x = (rij.squaredNorm() + epsilon * epsilon);
@@ -92,6 +143,8 @@ std::vector<float> *force_n_body()
     (*a)[i] = ai.dot(particles[i].r() / particles[i].radius());
   }
 
+  writeNBody(a, epsilon, "nbody_a.ascii");
+
   return a;
 }
 
@@ -100,14 +153,15 @@ float force_analytic(float r)
   float M = 0.0;
   float r2 = r * r;
 
-  for(int i = 0; i <= particles.size() - blockSize; i += blockSize) {
+  for(int i = 0; i < particles.size(); i++) {
     if(particles[i].radius2() <= r2) {
       M += particles[i].m();
     }
   }
 
   // Assumption: G = 1
-  return -M / (r2);
+  float x = (r2 + epsilon * epsilon);
+  return (-M * r) / (x * std::sqrt(x));
 }
 
 void step1()
@@ -117,7 +171,7 @@ void step1()
   std::vector<float> nDensity;
   std::vector<float> rInput;
 
-  for(float r = r0; r < radius; r += (radius / numSteps)) {
+  for(float r = r0; r <= radius; r += (radius / numSteps)) {
       float h_rho = density_hernquist(r);
       float n_rho = density_numeric(r);
 
@@ -135,7 +189,7 @@ void step1()
   mglData rData;
   rData.Set(rInput.data(), rInput.size());
 
-  mglGraph gr;
+  mglGraph gr(0, 1200, 800);
 
   float outMin = std::min(hData.Minimal(), nData.Minimal());
   float outMax = std::max(hData.Maximal(), nData.Maximal());
@@ -153,25 +207,25 @@ void step1()
   gr.AddLegend("Numeric", "r");
 
   gr.Legend();
-  gr.WriteFrame("density_profiles.png");
+  gr.WritePNG("density_profiles.png");
 }
 
 void step2()
 {
-  std::unique_ptr<std::vector<float>> ptr(force_n_body());
+  std::unique_ptr<std::vector<float>> ptr(force_n_body("nbody_a.ascii"));
   std::vector<float> a_numeric = *ptr;
 
-  float numSteps = 100;
+  int numSteps = 1000;
   float dr = radius / numSteps;
   std::vector<float> dAnalytic;
   std::vector<float> dNumeric;
   std::vector<float> rInput;
 
-  for(float r = r0; r < radius; r += dr) {
+  for(float r = r0; r <= radius; r += dr) {
     float a_curr = 0.0;
     int numParticles = 0;
 
-    for(int i = 0; i <= particles.size() - blockSize; i += blockSize) {
+    for(int i = 0; i < particles.size(); i++) {
       Particle p = particles[i];
 
       if((r - dr/2) < p.radius() && p.radius() <= (r + dr/2)) {
@@ -197,13 +251,14 @@ void step2()
   mglData rData;
   rData.Set(rInput.data(), rInput.size());
 
-  mglGraph gr;
+  mglGraph gr(0, 1200, 800);
 
   float outMin = std::min(aData.Minimal(), nData.Minimal());
   float outMax = std::max(aData.Maximal(), nData.Maximal());
 
   gr.SetRange('x', rData);
   gr.SetRange('y', outMin, outMax);
+  gr.SetFunc("lg(x)", "");
   gr.Adjust("y");
   gr.Axis();
 
@@ -214,7 +269,7 @@ void step2()
   gr.AddLegend("Numeric", "r");
 
   gr.Legend();
-  gr.WriteFrame("forces.png");
+  gr.WritePNG("forces.png");
 }
 
 void first_task()
