@@ -115,8 +115,10 @@ void calculate_constants()
 std::vector<float> *force_n_body(const std::string &fname)
 {
   std::vector<float> *a = readNBody(fname);
+  bool usingFile = false;
 
   if(a != NULL) {
+    usingFile = true;
     epsilon = a->front();
     a->erase(a->begin());
 
@@ -143,7 +145,9 @@ std::vector<float> *force_n_body(const std::string &fname)
     (*a)[i] = ai.dot(particles[i].r() / particles[i].radius());
   }
 
-  writeNBody(a, epsilon, "nbody_a.ascii");
+  if(!usingFile) {
+    writeNBody(a, epsilon, "nbody_a.ascii");
+  }
 
   return a;
 }
@@ -153,7 +157,7 @@ float force_analytic(float r)
   float M = 0.0;
   float r2 = r * r;
 
-  for(int i = 0; i < particles.size(); i++) {
+  for(int i = 0; i <= particles.size() - blockSize; i += blockSize) {
     if(particles[i].radius2() <= r2) {
       M += particles[i].m();
     }
@@ -215,7 +219,7 @@ void step2()
   std::unique_ptr<std::vector<float>> ptr(force_n_body("nbody_a.ascii"));
   std::vector<float> a_numeric = *ptr;
 
-  int numSteps = 1000;
+  int numSteps = 2000;
   float dr = radius / numSteps;
   std::vector<float> dAnalytic;
   std::vector<float> dNumeric;
