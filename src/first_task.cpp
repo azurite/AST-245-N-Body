@@ -60,6 +60,7 @@ float totalMass = 0.0;
 float radius = 0.0;
 float scaleLength = 0.0;
 float epsilon = 0.0; // softening
+float t_relax = 0.0;
 float r0 = 0.1; // center of system to avoid problems with dividing by 0
 
 // because computing the N-Boby forces is an n^2 algorithm it can take quite long to run depending
@@ -68,20 +69,25 @@ float r0 = 0.1; // center of system to avoid problems with dividing by 0
 // if blockSize = 1 this corresponds to taking all particles into consideration
 int blockSize = 1;
 
-float density_numeric(float r)
+float Mass(float r, bool geq = true)
 {
   float M = 0.0;
-  float V = 4/3*M_PI*r*r*r;
 
-  for(int i = 0; i < particles.size(); i++) {
-    Particle p = particles[i];
+  for(Particle &p : particles) {
+    float r2 = p.radius2();
 
-    if(p.radius2() <= r * r) {
+    if((geq && r2 <= r*r) || (!geq && r2 < r*r)) {
       M += p.m();
     }
   }
 
-  return M / V;
+  return M;
+}
+
+float density_numeric(float r)
+{
+  float V = 4.0/3.0*M_PI*r*r*r;
+  return Mass(r) / V;
 }
 
 float density_hernquist(float r)
@@ -102,6 +108,7 @@ void calculate_constants()
   // https://en.wikipedia.org/wiki/Mean_inter-particle_distance
   // after plugging in n = totalMass / (4/3*PI*r^3) in the formula most terms cancel out
   epsilon = radius / std::pow(totalMass, 1.0/3.0);
+  t_relax = compute_relaxation();
 
   std::cout << "First Task        " << std::endl;
   std::cout << "------------------" << std::endl;
@@ -109,6 +116,7 @@ void calculate_constants()
   std::cout << "  radius:         " << radius << std::endl;
   std::cout << "  scaleLength:    " << scaleLength << std::endl;
   std::cout << "  softening:      " << epsilon << std::endl;
+  std::cout << "  t_relax:        " << t_relax << std::endl;
   std::cout << "------------------" << std::endl;
 }
 
@@ -154,18 +162,30 @@ std::vector<float> *force_n_body(const std::string &fname)
 
 float force_analytic(float r)
 {
-  float M = 0.0;
-  float r2 = r * r;
+  // Assumption: G = 1
+  float x = r*r + epsilon*epsilon;
+  return (-Mass(r) * r) / (x * std::sqrt(x));
+}
 
-  for(int i = 0; i <= particles.size() - blockSize; i += blockSize) {
-    if(particles[i].radius2() <= r2) {
-      M += particles[i].m();
+float compute_relaxation()
+{
+  // compute half mass radius
+  float Rhm = .0;
+  float dr = radius / 1000;
+  for(float r = r0; r < radius; r += dr) {
+    if(Mass(r, false) >= totalMass * 0.5) {
+      Rhm = r;
+      break;
     }
   }
 
   // Assumption: G = 1
-  float x = (r2 + epsilon * epsilon);
-  return (-M * r) / (x * std::sqrt(x));
+  float N = particles.size();
+  float vc2 = Rhm * std::abs(force_analytic(Rhm));
+  float t_cross = radius / std::sqrt(vc2);
+  float t_relax = N / (8 * std::log(N)) * t_cross;
+
+  return t_relax;
 }
 
 void step1()
@@ -274,6 +294,37 @@ void step2()
 
   gr.Legend();
   gr.WritePNG("forces.png");
+
+  // compute the relaxation time scale for different softenings
+  float epsilon0 = epsilon;
+  std::vector<float> dRelax;
+  std::vector<float> dSoft;
+
+  for(float eps = epsilon0 / 8; eps <= epsilon0 * 8; eps *= 2) {
+    epsilon = eps;
+    dRelax.push_back(compute_relaxation());
+    dSoft.push_back(epsilon);
+  }
+
+  epsilon = epsilon0;
+
+  mglData relaxData;
+  relaxData.Set(dRelax.data(), dRelax.size());
+
+  mglData softData;
+  softData.Set(dSoft.data(), dSoft.size());
+
+  mglGraph gr_relax(0, 1200, 800);
+
+  gr_relax.SetRange('x', softData);
+  gr_relax.SetRange('y', relaxData);
+  gr_relax.Axis();
+
+  gr_relax.Plot(relaxData, "b");
+  gr_relax.AddLegend("t_{relax}", "b");
+
+  gr_relax.Legend();
+  gr_relax.WritePNG("relaxation.png");
 }
 
 void first_task()
