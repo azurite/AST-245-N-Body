@@ -84,6 +84,20 @@ float Mass(float r, bool geq = true)
   return M;
 }
 
+float density_in_shell(float r, float dr)
+{
+  float m = .0;
+  float r1 = r + dr;
+
+  for(Particle &p : particles) {
+    if(r <= p.radius() && p.radius() < r + dr) {
+      m += p.m();
+    }
+  }
+
+  return m / (4.0/3.0*M_PI*(r1*r1*r1 - r*r*r));
+}
+
 float density_numeric(float r)
 {
   float V = 4.0/3.0*M_PI*r*r*r;
@@ -191,17 +205,20 @@ float compute_relaxation()
 void step1()
 {
   int numSteps = 1000;
+  float dr = radius / numSteps;
   std::vector<float> hDensity;
   std::vector<float> nDensity;
   std::vector<float> rInput;
+  std::vector<float> errors;
 
-  for(float r = r0; r <= radius; r += (radius / numSteps)) {
-      float h_rho = density_hernquist(r);
-      float n_rho = density_numeric(r);
+  for(float r = r0; r <= radius; r += dr, dr *= 1.6) {
+      float h_rho = density_hernquist(r + dr/2);
+      float n_rho = density_in_shell(r, dr) + std::numeric_limits<float>::epsilon();
 
       rInput.push_back(r);
       hDensity.push_back(h_rho);
       nDensity.push_back(n_rho);
+      errors.push_back(std::abs(n_rho - h_rho) / std::sqrt(h_rho));
   }
 
   mglData hData;
@@ -212,6 +229,9 @@ void step1()
 
   mglData rData;
   rData.Set(rInput.data(), rInput.size());
+
+  mglData eData;
+  eData.Set(errors.data(), errors.size());
 
   mglGraph gr(0, 1200, 800);
 
@@ -229,6 +249,8 @@ void step1()
 
   gr.Plot(nData, "r");
   gr.AddLegend("Numeric", "r");
+
+  gr.Error(rData, nData, eData);
 
   gr.Legend();
   gr.WritePNG("density_profiles.png");
