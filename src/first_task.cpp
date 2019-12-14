@@ -61,7 +61,8 @@ float radius = 0.0;
 float scaleLength = 0.0;
 float epsilon = 0.0; // softening
 float t_relax = 0.0;
-float r0 = 0.1; // center of system to avoid problems with dividing by 0
+float r0 = std::numeric_limits<float>::max(); // center of system to avoid problems with dividing by 0
+float rhm = 0.0; // half mass radius
 
 // because computing the N-Boby forces is an n^2 algorithm it can take quite long to run depending
 // on the hardware. The blockSize variable specifies what fraction of particles
@@ -69,14 +70,14 @@ float r0 = 0.1; // center of system to avoid problems with dividing by 0
 // if blockSize = 1 this corresponds to taking all particles into consideration
 int blockSize = 1;
 
-float Mass(float r, bool geq = true)
+float Mass(float r, bool strictlyLess = false)
 {
   float M = 0.0;
 
   for(Particle &p : particles) {
     float r2 = p.radius2();
 
-    if((geq && r2 <= r*r) || (!geq && r2 < r*r)) {
+    if((!strictlyLess && r2 <= r*r) || (strictlyLess && r2 < r*r)) {
       M += p.m();
     }
   }
@@ -98,15 +99,15 @@ float density_in_shell(float r, float dr)
   return m / (4.0/3.0*M_PI*(r1*r1*r1 - r*r*r));
 }
 
-float density_numeric(float r)
-{
-  float V = 4.0/3.0*M_PI*r*r*r;
-  return Mass(r) / V;
-}
-
 float density_hernquist(float r)
 {
   return totalMass / (2 * M_PI) * (scaleLength / r) * (1 / std::pow(r + scaleLength, 3));
+}
+
+float force_analytic(float r)
+{
+  // Assumption: G = 1
+  return -Mass(r) / (r * r);
 }
 
 void calculate_constants()
@@ -114,10 +115,21 @@ void calculate_constants()
   for(Particle &p : particles) {
     totalMass += p.m();
     radius = std::max(p.radius2(), radius);
+    r0 = std::min(p.radius2(), r0);
   }
 
+  r0 = std::sqrt(r0);
   radius = std::sqrt(radius);
-  scaleLength = radius * 0.45;
+
+  float dr = radius / 100000;
+  for(float r = r0; r <= radius; r += dr) {
+    if(Mass(r) >= totalMass * 0.5) {
+      rhm = r;
+      break;
+    }
+  }
+
+  scaleLength = rhm / (1 + std::sqrt(2));
 
   // https://en.wikipedia.org/wiki/Mean_inter-particle_distance
   // after plugging in n = totalMass / (4/3*PI*r^3) in the formula most terms cancel out
@@ -128,6 +140,8 @@ void calculate_constants()
   std::cout << "------------------" << std::endl;
   std::cout << "  totalMass:      " << totalMass << std::endl;
   std::cout << "  radius:         " << radius << std::endl;
+  std::cout << "  r0:             " << r0 << std::endl;
+  std::cout << "  rhm:            " << rhm << std::endl;
   std::cout << "  scaleLength:    " << scaleLength << std::endl;
   std::cout << "  softening:      " << epsilon << std::endl;
   std::cout << "  t_relax:        " << t_relax << std::endl;
@@ -174,28 +188,11 @@ std::vector<float> *force_n_body(const std::string &fname)
   return a;
 }
 
-float force_analytic(float r)
-{
-  // Assumption: G = 1
-  float x = r*r + epsilon*epsilon;
-  return (-Mass(r) * r) / (x * std::sqrt(x));
-}
-
 float compute_relaxation()
 {
-  // compute half mass radius
-  float Rhm = .0;
-  float dr = radius / 1000;
-  for(float r = r0; r < radius; r += dr) {
-    if(Mass(r, false) >= totalMass * 0.5) {
-      Rhm = r;
-      break;
-    }
-  }
-
   // Assumption: G = 1
   float N = particles.size();
-  float vc2 = Rhm * std::abs(force_analytic(Rhm));
+  float vc2 = rhm * std::abs(force_analytic(rhm));
   float t_cross = radius / std::sqrt(vc2);
   float t_relax = N / (8 * std::log(N)) * t_cross;
 
@@ -204,21 +201,24 @@ float compute_relaxation()
 
 void step1()
 {
-  int numSteps = 1000;
+  int numSteps = 100;
   float dr = radius / numSteps;
   std::vector<float> hDensity;
   std::vector<float> nDensity;
   std::vector<float> rInput;
   std::vector<float> errors;
 
-  for(float r = r0; r <= radius; r += dr, dr *= 1.6) {
+  for(float r = r0; r < radius; r += dr) {
       float h_rho = density_hernquist(r + dr/2);
       float n_rho = density_in_shell(r, dr) + std::numeric_limits<float>::epsilon();
+
+      float r1 = r + dr;
+      float expectedDensity = (Mass(r1, true) - Mass(r, true)) / (4.0/3.0*M_PI*(r1*r1*r1 - r*r*r));
 
       rInput.push_back(r);
       hDensity.push_back(h_rho);
       nDensity.push_back(n_rho);
-      errors.push_back(std::abs(n_rho - h_rho) / std::sqrt(h_rho));
+      errors.push_back(std::sqrt(expectedDensity) + std::numeric_limits<float>::epsilon());
   }
 
   mglData hData;
@@ -233,27 +233,39 @@ void step1()
   mglData eData;
   eData.Set(errors.data(), errors.size());
 
-  mglGraph gr(0, 1200, 800);
+  mglGraph grDensity(0, 1200, 800);
 
   float outMin = std::min(hData.Minimal(), nData.Minimal());
   float outMax = std::max(hData.Maximal(), nData.Maximal());
 
-  gr.SetRange('x', rData);
-  gr.SetRange('y', outMin, outMax);
-  gr.SetFunc("", "lg(y)");
-  gr.Adjust("y");
-  gr.Axis();
+  grDensity.SetRange('x', rData);
+  grDensity.SetRange('y', outMin, outMax);
+  grDensity.SetCoor(mglLogY);
+  grDensity.Axis();
 
-  gr.Plot(hData, "b");
-  gr.AddLegend("Hernquist", "b");
+  grDensity.Plot(hData, "b");
+  grDensity.AddLegend("Hernquist", "b");
 
-  gr.Plot(nData, "r");
-  gr.AddLegend("Numeric", "r");
+  grDensity.Plot(nData, "r +");
+  grDensity.AddLegend("Numeric", "r +");
 
-  gr.Error(rData, nData, eData);
+  //grDensity.Error(rData, nData, eData);
 
-  gr.Legend();
-  gr.WritePNG("density_profiles.png");
+  grDensity.Legend();
+  grDensity.WritePNG("density_profiles.png");
+
+  mglGraph grError(0, 1200, 800);
+
+  grError.SetRange('x', rData);
+  grError.SetRange('y', eData);
+  grError.SetCoor(mglLogY);
+  grError.Axis();
+
+  grError.Plot(eData, "r +");
+  grError.AddLegend("Poissonian Error", "r +");
+
+  grError.Legend();
+  grError.WritePNG("poissonain_error.png");
 }
 
 void step2()
@@ -353,5 +365,5 @@ void first_task()
 {
   calculate_constants();
   step1();
-  step2();
+  //step2();
 }
