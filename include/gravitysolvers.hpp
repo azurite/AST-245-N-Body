@@ -6,7 +6,12 @@ using Eigen::Dynamic;
 #ifndef GRAVITYSOLVERS_H
 #define GRAVITYSOLVERS_H
 
-typedef Matrix<float, 10, Dynamic> MatrixData;
+/*
+  MatrixData[:,j] = [m, x, y, z, vx, vy, vz, ax, ay, az, potential]
+*/
+#define MATRIX_DATA_ROWS 11
+
+typedef Matrix<float, MATRIX_DATA_ROWS, Dynamic> MatrixData;
 
 namespace Gravitysolver {
   class Direct

@@ -11,7 +11,7 @@ bool Gravitysolver::Direct::readDataOld(const std::string &filename)
   if(infile.is_open()) {
     infile >> numParticles >> numGasParticles >> numStarParticles;
 
-    particles = Eigen::MatrixXf::Zero(10, numParticles);
+    particles = Eigen::MatrixXf::Zero(MATRIX_DATA_ROWS, numParticles);
 
     for(int i = 0; i < numParticles; i++) {
       infile >> particles(0, i); // m
@@ -55,7 +55,7 @@ bool Gravitysolver::Direct::readData(const std::string &filename)
 
   if(infile.is_open()) {
     infile >> N >> blockSize >> epsilon;
-    particles = Eigen::MatrixXf::Zero(10, N);
+    particles = Eigen::MatrixXf::Zero(MATRIX_DATA_ROWS, N);
 
     for(int j = 0; j < N; j++) {
       infile >> particles(0, j); // m
@@ -68,6 +68,7 @@ bool Gravitysolver::Direct::readData(const std::string &filename)
       infile >> particles(7, j); // ax
       infile >> particles(8, j); // ay
       infile >> particles(9, j); // az
+      infile >> particles(10, j); // potential
     }
 
     return true;
@@ -96,6 +97,7 @@ bool Gravitysolver::Direct::writeData(const std::string &filename)
       outfile << particles(7, j) << "\n"; // ax
       outfile << particles(8, j) << "\n"; // ay
       outfile << particles(9, j) << "\n"; // az
+      outfile << particles(10, j) << "\n" // potential
     }
 
     return true;
@@ -138,10 +140,21 @@ void Gravitysolver::Direct::solve()
       float d = (dx * dx + dy * dy + dz * dz + epsilon * epsilon);
       float d32 = d * std::sqrt(d);
 
+      // Assumption: G = 1
       particles(7, i) += mj * dx / d32;
       particles(8, i) += mj * dy / d32;
       particles(9, i) += mj * dz / d32;
     }
+
+    float x = particles(1, i);
+    float y = particles(2, i);
+    float z = particles(3, i);
+    float ax = particles(7, i);
+    float ay = particles(8, i);
+    float az = particles(9, i);
+
+    // project the force vector onto the normalized sphere normal
+    particles(10, i) = (x*ax + y*ay + z*az) / std::sqrt(x*x + y*y + z*z);
   }
 }
 
