@@ -14,10 +14,10 @@ LIBS = -lmgl2
 CXX = g++
 CXXFLAGS = -I /usr/include/eigen3 -I $(IDIR) -g
 
-_DEPS = data.hpp particle.hpp first_task.hpp
+_DEPS = data.hpp particle.hpp gravitysolvers.hpp first_task.hpp
 DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))
 
-_OBJ = main.o data.o particle.o first_task.o
+_OBJ = main.o data.o particle.o gravitysolvers.o first_task.o
 OBJ = $(patsubst %, $(ODIR)/%, $(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
