@@ -8,50 +8,8 @@
 
 #include <data.hpp>
 #include <particle.hpp>
+#include <gravitysolvers.hpp>
 #include <first_task.hpp>
-
-using Eigen::Vector3f;
-
-void writeNBody(std::vector<float> *a, float eps, const std::string &filename)
-{
-  std::ofstream outfile("data/" + filename);
-
-  if(outfile.is_open()) {
-    outfile << a->size() << " " << eps << "\n";
-
-    for(int i = 0; i < a->size(); i++) {
-      outfile << a->at(i) << "\n";
-    }
-
-    outfile.close();
-  }
-  else {
-    std::cout << "could not write to file" << std::endl;
-  }
-}
-
-std::vector<float> *readNBody(const std::string &filename)
-{
-  std::ifstream infile("data/" + filename);
-
-  if(infile.is_open()) {
-    int size;
-    infile >> size;
-
-    std::vector<float> *a = new std::vector<float>(size + 1, 0.0);
-    infile >> (*a)[0];
-
-    for(int i = 1; i < size + 1; i++) {
-      infile >> (*a)[i];
-    }
-
-    return a;
-  }
-  else {
-    std::cout << "could not read from file" << std::endl;
-    return NULL;
-  }
-}
 
 std::unique_ptr<std::vector<Particle>> p(Data::readFromFile("data.ascii"));
 std::vector<Particle> particles = *p;
@@ -136,46 +94,6 @@ void calculate_constants()
   std::cout << "  softening:      " << epsilon << std::endl;
   std::cout << "  t_relax:        " << t_relax << std::endl;
   std::cout << "------------------" << std::endl;
-}
-
-std::vector<float> *force_n_body(const std::string &fname)
-{
-  std::vector<float> *a = readNBody(fname);
-  bool usingFile = false;
-
-  if(a != NULL) {
-    usingFile = true;
-    epsilon = a->front();
-    a->erase(a->begin());
-
-    std::cout << "using n-body forces from file" << std::endl;
-    return a;
-  }
-
-  a = new std::vector<float>(particles.size(), 0.0);
-
-  for(int i = 0; i <= particles.size() - blockSize; i += blockSize) {
-    Vector3f ai(.0, .0, .0);
-
-    for(int j = 0; j < particles.size(); j++) {
-      if(i != j) {
-        Vector3f rij = particles[j].r() - particles[i].r();
-        float x = (rij.squaredNorm() + epsilon * epsilon);
-
-        // Assumption: G = 1
-        ai += particles[j].m() * rij / (x * std::sqrt(x));
-      }
-    }
-
-    // project the force vector onto the normalized sphere normal
-    (*a)[i] = ai.dot(particles[i].r() / particles[i].radius());
-  }
-
-  if(!usingFile) {
-    writeNBody(a, epsilon, "nbody_a.ascii");
-  }
-
-  return a;
 }
 
 float compute_relaxation()
@@ -266,8 +184,15 @@ void step1()
 
 void step2()
 {
-  std::unique_ptr<std::vector<float>> ptr(force_n_body("nbody_a.ascii"));
-  std::vector<float> a_numeric = *ptr;
+  blockSize = 10;
+  std::unique_ptr<Gravitysolver::Direct> solver(new Gravitysolver::Direct);
+
+  solver->setSoftening(epsilon);
+  solver->setBlockSize(blockSize);
+  solver->readDataOld("data/data.ascii");
+  solver->solve();
+
+  MatrixData solverData = solver->data();
 
   int numSteps = 10000;
   float dr = radius / numSteps;
@@ -283,7 +208,7 @@ void step2()
       Particle p = particles[i];
 
       if(r <= p.radius() && p.radius() < (r + dr)) {
-        a_curr += a_numeric[i];
+        a_curr += solverData(10, i);
         numParticles++;
       }
     }
