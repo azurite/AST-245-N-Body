@@ -97,7 +97,7 @@ bool Gravitysolver::Direct::writeData(const std::string &filename)
       outfile << particles(7, j) << "\n"; // ax
       outfile << particles(8, j) << "\n"; // ay
       outfile << particles(9, j) << "\n"; // az
-      outfile << particles(10, j) << "\n" // potential
+      outfile << particles(10, j) << "\n"; // potential
     }
 
     return true;

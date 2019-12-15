@@ -184,56 +184,77 @@ void step1()
 
 void step2()
 {
-  blockSize = 10;
   std::unique_ptr<Gravitysolver::Direct> solver(new Gravitysolver::Direct);
 
-  solver->setSoftening(epsilon);
+  blockSize = 10;
   solver->setBlockSize(blockSize);
   solver->readDataOld("data/data.ascii");
-  solver->solve();
 
-  MatrixData solverData = solver->data();
+  std::vector<mglData> plotData;
 
-  int numSteps = 10000;
-  float dr = radius / numSteps;
+  std::vector<float> softenings;
   std::vector<float> dAnalytic;
-  std::vector<float> dNumeric;
   std::vector<float> rInput;
 
-  for(float r = r0; r < radius; r += dr, dr *= 1.1) {
-    float a_curr = 0.0;
-    int numParticles = 0;
+  int numSteps = 1000;
+  float dr = radius / numSteps;
+  float flteps = std::numeric_limits<float>::epsilon();
 
-    for(int i = 0; i < particles.size(); i++) {
-      Particle p = particles[i];
+  r0 = 1.0;
 
-      if(r <= p.radius() && p.radius() < (r + dr)) {
-        a_curr += solverData(10, i);
-        numParticles++;
+  for(float r = r0; r < radius; r += dr) {
+    dAnalytic.push_back(std::abs(force_analytic(r)) + flteps);
+    rInput.push_back(r);
+  }
+
+  for(float eps = epsilon / 4; eps <= epsilon * 4; eps *= 2) {
+    softenings.push_back(eps);
+    solver->setSoftening(eps);
+    solver->solve();
+
+    std::vector<float> dNumeric;
+    Eigen::VectorXf a_numeric = solver->data().row(10);
+
+    // calculate the average force inside a shell
+    for(float r = r0; r < radius; r += dr) {
+      float a_curr = 0.0;
+      int numParticles = 0;
+
+      for(int i = 0; i < particles.size(); i++) {
+        Particle p = particles[i];
+
+        if(r <= p.radius() && p.radius() < (r + dr)) {
+          a_curr += a_numeric(i);
+          numParticles++;
+        }
       }
+
+      a_curr = numParticles == 0 ? .0 : a_curr / numParticles;
+      dNumeric.push_back(std::abs(a_curr) + flteps);
     }
 
-    // take the average force felt by all particles in the shell
-    a_curr = numParticles == 0 ? 0.0 : a_curr / numParticles;
+    mglData cData;
+    cData.Set(dNumeric.data(), dNumeric.size());
+    plotData.push_back(cData);
 
-    dAnalytic.push_back(std::abs(force_analytic(r)) + std::numeric_limits<float>::epsilon());
-    dNumeric.push_back(std::abs(a_curr) + std::numeric_limits<float>::epsilon());
-    rInput.push_back(r);
+    std::cout << "softening: " << eps << " done" << std::endl;
   }
 
   mglData aData;
   aData.Set(dAnalytic.data(), dAnalytic.size());
-
-  mglData nData;
-  nData.Set(dNumeric.data(), dNumeric.size());
 
   mglData rData;
   rData.Set(rInput.data(), rInput.size());
 
   mglGraph gr(0, 1200, 800);
 
-  float outMin = std::min(aData.Minimal(), nData.Minimal());
-  float outMax = std::max(aData.Maximal(), nData.Maximal());
+  float outMin;
+  float outMax;
+
+  for(int i = 0; i < plotData.size(); i++) {
+    outMin = std::min(plotData[i].Minimal(), aData.Minimal());
+    outMax = std::max(plotData[i].Maximal(), aData.Maximal());
+  }
 
   gr.SetRange('x', rData);
   gr.SetRange('y', outMin, outMax);
@@ -246,8 +267,13 @@ void step2()
   gr.Plot(aData, "b");
   gr.AddLegend("Analytic", "b");
 
-  gr.Plot(nData, "r +");
-  gr.AddLegend("Numeric", "r +");
+  // colors for plotting
+  std::vector<std::string> opt = {"r +", "c +", "m +", "h +", "l +", "n +", "q +"};
+
+  for(int i = 0; i < plotData.size(); i++) {
+    gr.Plot(plotData[i], opt[i].c_str());
+    //gr.AddLegend(("\epsilon = " + std::to_string(softenings[i]) + " [l]").c_str(), opt[i].c_str());
+  }
 
   gr.Legend();
   gr.WritePNG("forces.png");
