@@ -68,7 +68,7 @@ bool Gravitysolver::Direct::readData(const std::string &filename)
       infile >> particles(7, j); // ax
       infile >> particles(8, j); // ay
       infile >> particles(9, j); // az
-      infile >> particles(10, j); // potential
+      infile >> particles(10, j); // a_center
     }
 
     return true;
@@ -97,7 +97,7 @@ bool Gravitysolver::Direct::writeData(const std::string &filename)
       outfile << particles(7, j) << "\n"; // ax
       outfile << particles(8, j) << "\n"; // ay
       outfile << particles(9, j) << "\n"; // az
-      outfile << particles(10, j) << "\n"; // potential
+      outfile << particles(10, j) << "\n"; // a_center
     }
 
     return true;
