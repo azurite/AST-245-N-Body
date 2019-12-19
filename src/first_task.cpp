@@ -24,12 +24,6 @@ float t_relax = 0.0;
 float r0 = std::numeric_limits<float>::max(); // center of system to avoid problems with dividing by 0
 float rhm = 0.0; // half mass radius
 
-// because computing the N-Boby forces is an n^2 algorithm it can take quite long to run depending
-// on the hardware. The blockSize variable specifies what fraction of particles
-// is going to be used. F.ex a blockSize of 10 means we only take every 10th element
-// if blockSize = 1 this corresponds to taking all particles into consideration
-int blockSize = 1;
-
 float Mass(float r, bool strictlyLess = false)
 {
   float M = 0.0;
@@ -110,39 +104,44 @@ float compute_relaxation()
 
 void step1()
 {
-  int numSteps = 100;
-  float dr = radius / numSteps;
+  r0 = 0.005;
+  int numSteps = 50;
+
   std::vector<float> hDensity;
   std::vector<float> nDensity;
   std::vector<float> rInput;
   std::vector<float> errors;
 
-  for(float r = r0; r < radius; r += dr) {
-      float r0 = r;
-      float r1 = r + dr;
-      float MShell = Mass(r1, true) - Mass(r0, true);
-      float VShell = 4.0/3.0*M_PI*(r1*r1*r1 - r0*r0*r0);
+  // creates evenly spaced intervals on a log scale on the interval [r0, radius]
+  // drLinToLog(i) gives the start of the ith interval on [r0, radius]
+  auto drLinToLog = [&](int i) {
+    return r0 * std::pow(radius / r0, (float)i / (float)numSteps);
+  };
 
-      // we expand the radius of the shell until we find nonzero mass inside of it
-      // in order to yield visually more meaningful results on a log plot
-      while(MShell <= std::numeric_limits<float>::epsilon()) {
-          r1 += dr;
-          MShell = Mass(r1, true) - Mass(r0, true);
-      }
+  // transforms the numerical data into a dimension desirable for plotting
+  // here we want to avoid problems with 0 on log scales since log(0) is undefined
+  auto plotFit = [](float x) {
+    return x + std::numeric_limits<float>::epsilon();
+  };
 
-      float n_rho = MShell / VShell;
-      float numParticles = MShell / pMass;
+  for(int i = 0; i <= numSteps; i++) {
+      float r = drLinToLog(i);
+      float r1 = drLinToLog(i + 1);
+      float MShell = Mass(r1, true) - Mass(r, true);
+      float VShell = 4.0/3.0*M_PI*(r1*r1*r1 - r*r*r);
+
+      float nRho = MShell / VShell;
+      float numParticlesInShell = MShell / pMass;
 
       // p = n*m/v, err = sqrt(n) =>
-      // p_err = sqrt(n)/n*p = sqrt(n)*n*m/(n*v) = sqrt(n)*m/v and adjust error to log10 scale
-      float rho_error = std::sqrt(numParticles) * pMass / VShell / std::log(10);
+      // p_err = sqrt(n)/n*p = sqrt(n)*n*m/(n*v) = sqrt(n)*m/v
+      // p = density, n = #particles, m = pMass
+      float rhoError = std::sqrt(numParticlesInShell) * pMass / VShell;
 
-      hDensity.push_back(density_hernquist((r0 + r1) / 2));
-      nDensity.push_back(n_rho);
-      errors.push_back(rho_error);
-
+      hDensity.push_back(plotFit(density_hernquist((r + r1) / 2)));
+      nDensity.push_back(plotFit(nRho));
+      errors.push_back(rhoError);
       rInput.push_back(r);
-      r = r1 - dr;
   }
 
   mglData hData;
@@ -164,7 +163,9 @@ void step1()
 
   gr.SetRange('x', rData);
   gr.SetRange('y', outMin, outMax);
-  gr.SetCoor(mglLogY);
+
+  gr.SetFontSize(2);
+  gr.SetCoor(mglLogLog);
   gr.Axis();
 
   gr.Label('x', "Radius [l]", 0);
@@ -222,7 +223,6 @@ void step2()
     std::vector<float> dNumeric;
     Eigen::VectorXf fn = solver->data().row(10);
 
-    // calculate the average gravitational force in a shell
     for(int i = 0; i <= numSteps; i++) {
       float r = drLinToLog(i);
       float r1 = drLinToLog(i + 1);
@@ -231,6 +231,7 @@ void step2()
       float f = 0.0;
       int numParticles = 0;
 
+      // calculate the average gravitational force in a shell
       for(int i = 0; i < particles.size(); i++) {
         Particle p = particles[i];
 
