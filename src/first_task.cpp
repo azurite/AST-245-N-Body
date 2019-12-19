@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
+#include <iomanip>
 #include <math.h>
 #include <cmath>
 #include <mgl2/mgl.h>
@@ -184,26 +185,35 @@ void step1()
 
 void step2()
 {
-  std::unique_ptr<Gravitysolver::Direct> solver(new Gravitysolver::Direct());
-  std::vector<mglData> plotData;
+  r0 = 0.005;
+  int numSteps = 100;
 
   std::vector<float> softenings;
   std::vector<float> dAnalytic;
   std::vector<float> rInput;
 
-  r0 = 0.1;
+  // creates evenly spaced intervals on a log scale on the interval [r0, radius]
+  // drLinToLog(i) gives the start of the ith interval on [r0, radius]
+  auto drLinToLog = [&](int i) {
+    return r0 * std::pow(radius / r0, (float)i / (float)numSteps);
+  };
 
-  int numSteps = 200;
-  int numStepsInner = 50;
-  float rChange = 10.0;
-  float dr = (radius - r0) / numSteps;
-  float small_dr = (rChange - r0) / numStepsInner;
-  float flteps = std::numeric_limits<float>::epsilon();
+  // transforms the numerical data into a dimension desirable for plotting
+  // here we want to plot the magnitude of the force and add a small nonzero
+  // number to the force to avoid problems with 0 on log scales since log(0) is undefined
+  auto plotFit = [](float x) {
+    return std::abs(x) + std::numeric_limits<float>::epsilon();
+  };
 
-  for(float r = r0; r < radius; r += (r < rChange ? small_dr : dr)) {
-    dAnalytic.push_back(std::abs(force_hernquist(r)) + flteps);
+  // calculate the analytical force in the hernquist model
+  for(int i = 0; i <= numSteps; i++) {
+    float r = drLinToLog(i);
+    dAnalytic.push_back(plotFit(force_hernquist(r)));
     rInput.push_back(r);
   }
+
+  std::unique_ptr<Gravitysolver::Direct> solver(new Gravitysolver::Direct());
+  std::vector<mglData> plotData;
 
   for(int i = 1; i <= 7; i++) {
     solver->readData("data/direct-nbody-" + std::to_string(i) + ".txt");
@@ -212,16 +222,14 @@ void step2()
     std::vector<float> dNumeric;
     Eigen::VectorXf fn = solver->data().row(10);
 
-    // calculate the average force inside a shell
-    for(float r = r0; r < radius; r += (r < rChange ? small_dr : dr)) {
-      float r1 = r + (r < rChange ? small_dr : dr);
+    // calculate the average gravitational force in a shell
+    for(int i = 0; i <= numSteps; i++) {
+      float r = drLinToLog(i);
+      float r1 = drLinToLog(i + 1);
+      float dr = r1 - r;
+
       float f = 0.0;
       int numParticles = 0;
-
-      // increase shell size until we find at least 1 particle in it
-      while(Mass(r1, true) - Mass(r, true) <= flteps) {
-          r1 += (r < rChange ? small_dr : dr);
-      }
 
       for(int i = 0; i < particles.size(); i++) {
         Particle p = particles[i];
@@ -233,7 +241,7 @@ void step2()
       }
 
       f = (numParticles == 0 ? .0 : f / numParticles);
-      dNumeric.push_back(std::abs(f) + flteps);
+      dNumeric.push_back(plotFit(f));
     }
 
     mglData cData;
@@ -253,7 +261,7 @@ void step2()
   float outMax;
 
   for(int i = 0; i < plotData.size(); i++) {
-    outMin = std::min(plotData[i].Minimal(), aData.Minimal());
+    outMin = std::max(std::min(plotData[i].Minimal(), aData.Minimal()), 50.0);
     outMax = std::max(plotData[i].Maximal(), aData.Maximal());
   }
 
@@ -271,11 +279,14 @@ void step2()
   gr.AddLegend("Analytic", "b");
 
   // colors for plotting
-  std::vector<std::string> opt = {"r +", "c +", "m +", "h +", "l +", "n +", "q +"};
+  const char *opt[7] = {"r +", "c +", "m +", "h +", "l +", "n +", "q +"};
 
   for(int i = 0; i < plotData.size(); i++) {
-    gr.Plot(rData, plotData[i], opt[i].c_str());
-    gr.AddLegend(("\\epsilon = " + std::to_string(softenings[i]) + " [l]").c_str(), opt[i].c_str());
+    std::stringstream ss;
+    ss << "\\epsilon = " << std::setprecision(4) << softenings[i] << " [l]";
+
+    gr.Plot(rData, plotData[i], opt[i]);
+    gr.AddLegend(ss.str().c_str(), opt[i]);
   }
 
   gr.Legend();
