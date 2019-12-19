@@ -7,7 +7,7 @@ using Eigen::Dynamic;
 #define GRAVITYSOLVERS_H
 
 /*
-  MatrixData[:,j] = [m, x, y, z, vx, vy, vz, ax, ay, az, potential]
+  MatrixData[:,j] = [m, x, y, z, vx, vy, vz, fx, fy, fz, f_center]
 */
 #define MATRIX_DATA_ROWS 11
 
@@ -21,9 +21,11 @@ namespace Gravitysolver {
     int blockSize;
     MatrixData particles;
   public:
+    Direct();
     bool readDataOld(const std::string &filename);
     bool readData(const std::string &filename);
     bool writeData(const std::string &filename);
+    float softening();
     void setSoftening(float eps);
     void setBlockSize(int blockSize);
     void solve();

@@ -46,13 +46,13 @@ float Mass(float r, bool strictlyLess = false)
 
 float density_hernquist(float r)
 {
-  return totalMass / (2 * M_PI) * (scaleLength / r) * (1 / std::pow(r + scaleLength, 3));
+  return (totalMass / (2 * M_PI)) * (scaleLength / r) * (1 / std::pow(r + scaleLength, 3));
 }
 
-float force_analytic(float r)
+float force_hernquist(float r)
 {
   // Assumption: G = 1
-  return -Mass(r) / (r * r);
+  return -totalMass * pMass / ((r + scaleLength) * (r + scaleLength));
 }
 
 void calculate_constants()
@@ -65,7 +65,7 @@ void calculate_constants()
     r0 = std::min(p.radius2(), r0);
   }
 
-  r0 = std::sqrt(r0);
+  r0 = std::sqrt(r0) + std::numeric_limits<float>::epsilon();
   radius = std::sqrt(radius);
 
   float dr = radius / 100000;
@@ -100,7 +100,7 @@ float compute_relaxation()
 {
   // Assumption: G = 1
   float N = particles.size();
-  float vc2 = rhm * std::abs(force_analytic(rhm));
+  float vc2 = rhm * std::abs(force_hernquist(rhm));
   float t_cross = radius / std::sqrt(vc2);
   float t_relax = N / (8 * std::log(N)) * t_cross;
 
@@ -169,13 +169,13 @@ void step1()
   gr.Label('x', "Radius [l]", 0);
   gr.Label('y', "Density [m]/[l]^3", 0);
 
-  gr.Plot(hData, "b");
+  gr.Plot(rData, hData, "b");
   gr.AddLegend("Hernquist", "b");
 
-  gr.Plot(nData, "r .");
+  gr.Plot(rData, nData, "r .");
   gr.AddLegend("Numeric", "r .");
 
-  gr.Error(nData, eData, "qo");
+  gr.Error(rData, nData, eData, "qo");
   gr.AddLegend("Poissonian Error", "qo");
 
   gr.Legend();
@@ -184,60 +184,61 @@ void step1()
 
 void step2()
 {
-  std::unique_ptr<Gravitysolver::Direct> solver(new Gravitysolver::Direct);
-
-  blockSize = 10;
-  solver->setBlockSize(blockSize);
-  solver->readDataOld("data/data.ascii");
-
+  std::unique_ptr<Gravitysolver::Direct> solver(new Gravitysolver::Direct());
   std::vector<mglData> plotData;
 
   std::vector<float> softenings;
   std::vector<float> dAnalytic;
   std::vector<float> rInput;
 
-  int numSteps = 1000;
-  float dr = radius / numSteps;
+  r0 = 0.1;
+
+  int numSteps = 200;
+  int numStepsInner = 50;
+  float rChange = 10.0;
+  float dr = (radius - r0) / numSteps;
+  float small_dr = (rChange - r0) / numStepsInner;
   float flteps = std::numeric_limits<float>::epsilon();
 
-  r0 = 1.0;
-
-  for(float r = r0; r < radius; r += dr) {
-    dAnalytic.push_back(std::abs(force_analytic(r)) + flteps);
+  for(float r = r0; r < radius; r += (r < rChange ? small_dr : dr)) {
+    dAnalytic.push_back(std::abs(force_hernquist(r)) + flteps);
     rInput.push_back(r);
   }
 
-  for(float eps = epsilon / 4; eps <= epsilon * 4; eps *= 2) {
-    softenings.push_back(eps);
-    solver->setSoftening(eps);
-    solver->solve();
+  for(int i = 1; i <= 7; i++) {
+    solver->readData("data/direct-nbody-" + std::to_string(i) + ".txt");
+    softenings.push_back(solver->softening());
 
     std::vector<float> dNumeric;
-    Eigen::VectorXf a_numeric = solver->data().row(10);
+    Eigen::VectorXf fn = solver->data().row(10);
 
     // calculate the average force inside a shell
-    for(float r = r0; r < radius; r += dr) {
-      float a_curr = 0.0;
+    for(float r = r0; r < radius; r += (r < rChange ? small_dr : dr)) {
+      float r1 = r + (r < rChange ? small_dr : dr);
+      float f = 0.0;
       int numParticles = 0;
+
+      // increase shell size until we find at least 1 particle in it
+      while(Mass(r1, true) - Mass(r, true) <= flteps) {
+          r1 += (r < rChange ? small_dr : dr);
+      }
 
       for(int i = 0; i < particles.size(); i++) {
         Particle p = particles[i];
 
-        if(r <= p.radius() && p.radius() < (r + dr)) {
-          a_curr += a_numeric(i);
+        if(r <= p.radius() && p.radius() < r1) {
+          f += fn(i);
           numParticles++;
         }
       }
 
-      a_curr = numParticles == 0 ? .0 : a_curr / numParticles;
-      dNumeric.push_back(std::abs(a_curr) + flteps);
+      f = (numParticles == 0 ? .0 : f / numParticles);
+      dNumeric.push_back(std::abs(f) + flteps);
     }
 
     mglData cData;
     cData.Set(dNumeric.data(), dNumeric.size());
     plotData.push_back(cData);
-
-    std::cout << "softening: " << eps << " done" << std::endl;
   }
 
   mglData aData;
@@ -258,21 +259,23 @@ void step2()
 
   gr.SetRange('x', rData);
   gr.SetRange('y', outMin, outMax);
+
+  gr.SetFontSize(2);
   gr.SetCoor(mglLogLog);
   gr.Axis();
 
   gr.Label('x', "Radius [l]", 0);
   gr.Label('y', "Force [m]^2[l]^{-2}", 0);
 
-  gr.Plot(aData, "b");
+  gr.Plot(rData, aData, "b");
   gr.AddLegend("Analytic", "b");
 
   // colors for plotting
   std::vector<std::string> opt = {"r +", "c +", "m +", "h +", "l +", "n +", "q +"};
 
   for(int i = 0; i < plotData.size(); i++) {
-    gr.Plot(plotData[i], opt[i].c_str());
-    //gr.AddLegend(("\epsilon = " + std::to_string(softenings[i]) + " [l]").c_str(), opt[i].c_str());
+    gr.Plot(rData, plotData[i], opt[i].c_str());
+    gr.AddLegend(("\\epsilon = " + std::to_string(softenings[i]) + " [l]").c_str(), opt[i].c_str());
   }
 
   gr.Legend();
