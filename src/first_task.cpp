@@ -44,6 +44,7 @@ float density_hernquist(float r)
   return (totalMass / (2 * M_PI)) * (scaleLength / r) * (1 / std::pow(r + scaleLength, 3));
 }
 
+// Computes force F where F = m*a
 float force_hernquist(float r)
 {
   // Assumption: G = 1
@@ -95,8 +96,8 @@ float compute_relaxation()
 {
   // Assumption: G = 1
   float N = particles.size();
-  float vc2 = rhm * std::abs(force_hernquist(rhm));
-  float t_cross = radius / std::sqrt(vc2);
+  float vc = std::sqrt(totalMass * 0.5 / rhm);
+  float t_cross = rhm / vc;
   float t_relax = N / (8 * std::log(N)) * t_cross;
 
   return t_relax;
