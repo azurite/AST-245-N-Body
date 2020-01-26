@@ -224,7 +224,7 @@ void step2()
     std::vector<float> dNumeric;
 
     // project the force vector of each particle towards the center of the system
-    MatrixData solverData = solver->data();
+    const MatrixData &solverData = solver->data();
     Eigen::VectorXf f_center(solverData.cols());
 
     float fx, fy, fz, x, y, z, norm;
