@@ -14,31 +14,32 @@ using Eigen::Dynamic;
 typedef Matrix<float, MATRIX_DATA_ROWS, Dynamic> MatrixData;
 
 namespace Gravitysolver {
-  class Direct
+  class DataIO
   {
-  private:
+  protected:
     float epsilon;
     MatrixData particles;
   public:
-    Direct();
+    DataIO();
     bool readDataOld(const std::string &filename);
     bool readData(const std::string &filename);
     bool writeData(const std::string &filename);
+  };
+
+  class Direct : public DataIO
+  {
+  public:
+    Direct();
     float softening();
     void setSoftening(float eps);
     void solve();
     const MatrixData &data();
   };
 
-  class PM
+  class PM : public DataIO
   {
-  private:
-    MatrixData particles;
   public:
     PM();
-    bool readDataOld(const std::string &filename);
-    bool readData(const std::string &filename);
-    bool writeData(const std::string &filename);
     void solve();
     const MatrixData &data();
   };

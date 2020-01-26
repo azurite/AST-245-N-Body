@@ -7,12 +7,12 @@
 // ***************************** DIRECT SOLVER ***************************** //
 // ************************************************************************* //
 
-Gravitysolver::Direct::Direct()
+Gravitysolver::DataIO::DataIO()
 {
   epsilon = 0.0;
 }
 
-bool Gravitysolver::Direct::readDataOld(const std::string &filename)
+bool Gravitysolver::DataIO::readDataOld(const std::string &filename)
 {
   std::ifstream infile(filename);
   int numParticles, numGasParticles, numStarParticles;
@@ -53,11 +53,11 @@ bool Gravitysolver::Direct::readDataOld(const std::string &filename)
     return true;
   }
 
-  std::cout << "Gravitysolver::Direct::readDataOld(\"" << filename << "\") " << "could not read file" << std::endl;
+  std::cout << "Gravitysolver::DataIO::readDataOld(\"" << filename << "\") " << "could not read file" << std::endl;
   return false;
 }
 
-bool Gravitysolver::Direct::readData(const std::string &filename)
+bool Gravitysolver::DataIO::readData(const std::string &filename)
 {
   std::ifstream infile(filename);
   int N;
@@ -85,11 +85,11 @@ bool Gravitysolver::Direct::readData(const std::string &filename)
     return true;
   }
 
-  std::cout << "Gravitysolver::Direct::readData(\"" << filename << "\") " << "could not read file" << std::endl;
+  std::cout << "Gravitysolver::DataIO::readData(\"" << filename << "\") " << "could not read file" << std::endl;
   return false;
 }
 
-bool Gravitysolver::Direct::writeData(const std::string &filename)
+bool Gravitysolver::DataIO::writeData(const std::string &filename)
 {
   std::ofstream outfile(filename);
   int N = particles.cols();
@@ -113,8 +113,17 @@ bool Gravitysolver::Direct::writeData(const std::string &filename)
     return true;
   }
 
-  std::cout << "Gravitysolver::Direct::writeData(\"" << filename << "\") " << "could not write file" << std::endl;
+  std::cout << "Gravitysolver::DataIO::writeData(\"" << filename << "\") " << "could not write file" << std::endl;
   return false;
+}
+
+// ************************************************************************* //
+// ***************************** DIRECT SOLVER ***************************** //
+// ************************************************************************* //
+
+Gravitysolver::Direct::Direct()
+{
+
 }
 
 float Gravitysolver::Direct::softening()
@@ -175,4 +184,14 @@ const MatrixData &Gravitysolver::Direct::data()
 Gravitysolver::PM::PM()
 {
 
+}
+
+void Gravitysolver::PM::solve()
+{
+
+}
+
+const MatrixData &Gravitysolver::PM::data()
+{
+  return particles;
 }
