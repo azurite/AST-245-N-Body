@@ -222,7 +222,26 @@ void step2()
     softenings.push_back(solver->softening());
 
     std::vector<float> dNumeric;
-    Eigen::VectorXf fn = solver->data().row(10);
+
+    // project the force vector of each particle towards the center of the system
+    MatrixData solverData = solver->data();
+    Eigen::VectorXf f_center(solverData.cols());
+
+    float fx, fy, fz, x, y, z, norm;
+
+    for(int i = 0; i < solverData.cols(); i++) {
+      x = solverData(1, i);
+      y = solverData(2, i);
+      z = solverData(3, i);
+      fx = solverData(7, i);
+      fy = solverData(8, i);
+      fz = solverData(9, i);
+
+      norm = std::sqrt(x*x + y*y + z*z);
+
+      // project the force vector onto the normalized sphere normal
+      f_center(i) = (x*fx + y*fy + z*fz) / norm;
+    }
 
     for(int i = 0; i <= numSteps; i++) {
       float r = drLinToLog(i);
@@ -237,7 +256,7 @@ void step2()
         Particle p = particles[i];
 
         if(r <= p.radius() && p.radius() < r1) {
-          f += fn(i);
+          f += f_center(i);
           numParticles++;
         }
       }

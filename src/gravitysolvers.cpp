@@ -3,10 +3,13 @@
 #include <Eigen/Dense>
 #include <gravitysolvers.hpp>
 
+// ************************************************************************* //
+// ***************************** DIRECT SOLVER ***************************** //
+// ************************************************************************* //
+
 Gravitysolver::Direct::Direct()
 {
   epsilon = 0.0;
-  blockSize = 1;
 }
 
 bool Gravitysolver::Direct::readDataOld(const std::string &filename)
@@ -60,13 +63,13 @@ bool Gravitysolver::Direct::readData(const std::string &filename)
   int N;
 
   if(infile.is_open()) {
-    infile >> N >> blockSize >> epsilon;
+    infile >> N >> epsilon;
     particles = Eigen::MatrixXf::Zero(MATRIX_DATA_ROWS, N);
 
-    float m, x, y, z, vx, vy, vz, fx, fy, fz, f_center;
+    float m, x, y, z, vx, vy, vz, fx, fy, fz;
 
     for(int j = 0; j < N; j++) {
-      infile >> m >> x >> y >> z >> vx >> vy >> vz >> fx >> fy >> fz >> f_center;
+      infile >> m >> x >> y >> z >> vx >> vy >> vz >> fx >> fy >> fz;
       particles(0, j) = m;
       particles(1, j) = x;
       particles(2, j) = y;
@@ -77,7 +80,6 @@ bool Gravitysolver::Direct::readData(const std::string &filename)
       particles(7, j) = fx;
       particles(8, j) = fy;
       particles(9, j) = fz;
-      particles(10, j) = f_center;
     }
 
     return true;
@@ -93,7 +95,7 @@ bool Gravitysolver::Direct::writeData(const std::string &filename)
   int N = particles.cols();
 
   if(outfile.is_open()) {
-    outfile << N << " " << blockSize << " " << epsilon << "\n";
+    outfile << N << " " << epsilon << "\n";
 
     for(int j = 0; j < N; j++) {
       outfile << particles(0, j) << "\n"; // m
@@ -106,7 +108,6 @@ bool Gravitysolver::Direct::writeData(const std::string &filename)
       outfile << particles(7, j) << "\n"; // fx
       outfile << particles(8, j) << "\n"; // fy
       outfile << particles(9, j) << "\n"; // fz
-      outfile << particles(10, j) << "\n"; // f_center
     }
 
     return true;
@@ -124,16 +125,6 @@ float Gravitysolver::Direct::softening()
 void Gravitysolver::Direct::setSoftening(float eps)
 {
   epsilon = eps;
-}
-
-void Gravitysolver::Direct::setBlockSize(int newBlockSize)
-{
-  if(newBlockSize >= 1) {
-    blockSize = newBlockSize;
-  }
-  else {
-    std::cout << "Gravitysolver::Direct::setBlockSize(" << newBlockSize << ") " << "newBlockSize must be >= 1" << std::endl;
-  }
 }
 
 void Gravitysolver::Direct::solve()
@@ -170,25 +161,18 @@ void Gravitysolver::Direct::solve()
       particles(9, j) -= fz;
     }
   }
-
-  float x, y, z, norm;
-
-  for(int i = 0; i < particles.cols(); i++) {
-    x = particles(1, i);
-    y = particles(2, i);
-    z = particles(3, i);
-    fx = particles(7, i);
-    fy = particles(8, i);
-    fz = particles(9, i);
-
-    norm = std::sqrt(x*x + y*y + z*z);
-
-    // project the force vector onto the normalized sphere normal
-    particles(10, i) = (x*fx + y*fy + z*fz) / norm;
-  }
 }
 
 const MatrixData &Gravitysolver::Direct::data()
 {
   return particles;
+}
+
+// ************************************************************************* //
+// ******************************* PM SOLVER ******************************* //
+// ************************************************************************* //
+
+Gravitysolver::PM::PM()
+{
+
 }
