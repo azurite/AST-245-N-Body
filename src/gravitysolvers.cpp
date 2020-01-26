@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <Eigen/Dense>
+#include <unsupported/Eigen/FFT>
 #include <gravitysolvers.hpp>
 
 // ************************************************************************* //
@@ -184,6 +185,97 @@ const MatrixData &Gravitysolver::Direct::data()
 Gravitysolver::PM::PM()
 {
 
+}
+
+void Gravitysolver::PM::fft3d(FieldTensor &t)
+{
+  const int x = t.dimension(0);
+  const int y = t.dimension(1);
+  const int z = t.dimension(2);
+
+  Eigen::FFT<float> fft;
+
+  for(int k = 0; k < z; k++) { // for each 2d sheet make a 2d fft
+    for(int j = 0; j < y; j++) { // fft in x-dir
+      VectorXcf tv(x);
+      for(int i = 0; i < x; i++)
+          tv(i) = t(i, j, k);
+
+      VectorXcf fv = fft.fwd(tv);
+      for(int i = 0; i < x; i++)
+          t(i, j, k) = fv(i);
+    }
+
+    for(int i = 0; i < x; i++) { // fft in y-dir
+      VectorXcf tv(y);
+      for(int j = 0; j < y; j++)
+          tv(j) = t(i, j, k);
+
+      VectorXcf fv = fft.fwd(tv);
+      for(int j = 0; j < y; j++)
+          t(i, j, k) = fv(j);
+    }
+  }
+
+  for(int i = 0; i < x; i++) { // and for each of the x*y spikes pointing upwards in z-dir do a 1D fft
+    for(int j = 0; j < y; j++) {
+
+      VectorXcf tv(z);
+      for(int k = 0; k < z; k++)
+        tv(k) = t(i, j, k);
+
+      VectorXcf fv = fft.fwd(tv);
+      for(int k = 0; k < z; k++)
+        t(i, j, k) = fv(k);
+    }
+  }
+}
+
+void Gravitysolver::PM::ifft3d(FieldTensor &t)
+{
+  const int x = t.dimension(0);
+  const int y = t.dimension(1);
+  const int z = t.dimension(2);
+
+  const float invXYZ = 1.0 / (x*y*z);
+
+  for(int i = 0; i < x; i++) {
+    for(int j = 0; j < y; j++) {
+      for(int k = 0; k < z; k++) {
+        t(i,j,k) = std::conj(t(i,j,k));
+      }
+    }
+  }
+
+  fft3d(t);
+
+  for(int i = 0; i < x; i++) {
+    for(int j = 0; j < y; j++) {
+      for(int k = 0; k < z; k++) {
+        t(i,j,k) = std::conj(t(i,j,k)) * invXYZ;
+      }
+    }
+  }
+}
+
+void Gravitysolver::PM::conv3d(FieldTensor &out, FieldTensor &in, FieldTensor &kernel)
+{
+  int x = in.dimension(0);
+  int y = in.dimension(1);
+  int z = in.dimension(2);
+
+  fft3d(in);
+  fft3d(kernel);
+
+  for(int i = 0; i < x; i++) {
+    for(int j = 0; j < y; j++) {
+      for(int k = 0; k < z; k++) {
+        out(i,j,k) = in(i,j,k) * kernel(i,j,k);
+      }
+    }
+  }
+
+  ifft3d(out);
 }
 
 void Gravitysolver::PM::solve()
