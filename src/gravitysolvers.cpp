@@ -5,7 +5,7 @@
 #include <gravitysolvers.hpp>
 
 // ************************************************************************* //
-// ***************************** DIRECT SOLVER ***************************** //
+// ******************************** DATA IO ******************************** //
 // ************************************************************************* //
 
 Gravitysolver::DataIO::DataIO()
@@ -182,9 +182,51 @@ const MatrixData &Gravitysolver::Direct::data()
 // ******************************* PM SOLVER ******************************* //
 // ************************************************************************* //
 
-Gravitysolver::PM::PM()
+Gravitysolver::PM::PM(int numGridCells)
 {
+  if(numGridCells > 0) {
+    Ng = numGridCells;
+  }
+  else {
+    std::cout << "Gravitysolver::PM::PM(" << numGridCells << ") numGridCells must be > 0" << std::endl;
+    Ng = 1;
+  }
 
+  h = .0;
+}
+
+/**
+* Returns indices for a mesh cell for the galaxy given world coordinates.
+* World coordinates have the center of the galaxy at (0, 0, 0).
+* The mapping to grid coordinates is an affine mapping where the galaxy center
+* (0, 0, 0) is in the center of the mesh as well.
+*/
+Vector3i Gravitysolver::PM::worldToGrid(float x, float y, float z)
+{
+  Vector3i gridCoor;
+
+  gridCoor(0) = std::floor((x + (worldLen / 2)) / worldLen * Ng);
+  gridCoor(1) = std::floor((y + (worldLen / 2)) / worldLen * Ng);
+  gridCoor(2) = std::floor((z + (worldLen / 2)) / worldLen * Ng);
+
+  return gridCoor;
+}
+
+/**
+* Returns position at the center of a mesh cell in world coordinates given cell indices
+* The position is mapped in a fashin such that (0, 0, 0) is the center of the galaxy
+* in world coordinates.
+*/
+Vector3f Gravitysolver::PM::gridToWorld(int i, int j, int k)
+{
+  float h = worldLen / Ng; // cell size
+  Vector3f worldCoor;
+
+  worldCoor(0) = (i * worldLen / Ng) - (worldLen / 2) + (h / 2);
+  worldCoor(1) = (j * worldLen / Ng) - (worldLen / 2) + (h / 2);
+  worldCoor(2) = (k * worldLen / Ng) - (worldLen / 2) + (h / 2);
+
+  return worldCoor;
 }
 
 void Gravitysolver::PM::fft3d(FieldTensor &t)
@@ -280,7 +322,23 @@ void Gravitysolver::PM::conv3d(FieldTensor &out, FieldTensor &in, FieldTensor &k
 
 void Gravitysolver::PM::solve()
 {
+  const int N = particles.cols();
+  Vector3f maxPos = particles.block(1, 0, 3, N).rowwise().maxCoeff();
+  Vector3f minPosAbs = particles.block(1, 0, 3, N).rowwise().minCoeff().cwiseAbs();
 
+  worldLen = std::max(maxPos.maxCoeff(), minPosAbs.maxCoeff()) * 2;
+
+  // adds one layer of cells in each dimension so particles at the edge will
+  // contribute with their entire mass to the density field
+  worldLen += (worldLen / Ng);
+  h = worldLen / Ng;
+
+  std::cout << "PM solver global parameters" << std::endl;
+  std::cout << "---------------------------" << std::endl;
+  std::cout << "worldLen:   " << worldLen << std::endl;
+  std::cout << "Ng:         " << Ng << std::endl;
+  std::cout << "h:          " << h << std::endl;
+  std::cout << "---------------------------" << std::endl;
 }
 
 const MatrixData &Gravitysolver::PM::data()

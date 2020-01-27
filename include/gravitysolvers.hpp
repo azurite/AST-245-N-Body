@@ -5,6 +5,8 @@ using Eigen::Matrix;
 using Eigen::Dynamic;
 using Eigen::Tensor;
 using Eigen::VectorXcf;
+using Eigen::Vector3i;
+using Eigen::Vector3f;
 
 #ifndef GRAVITYSOLVERS_H
 #define GRAVITYSOLVERS_H
@@ -44,14 +46,19 @@ namespace Gravitysolver {
   class PM : public DataIO
   {
   private:
+    int Ng; // number of cells per dimension
+    float h; // cell size
+    float worldLen; // the size of the smallest enclosing cube of the galaxy
     FieldTensor density;
     FieldTensor greenFunction;
     FieldTensor potential;
+    Vector3i worldToGrid(float x, float y, float z);
+    Vector3f gridToWorld(int i, int j, int k);
     void fft3d(FieldTensor &t);
     void ifft3d(FieldTensor &t);
     void conv3d(FieldTensor &out, FieldTensor &in, FieldTensor &kernel);
   public:
-    PM();
+    PM(int numGridCells);
     void solve();
     const MatrixData &data();
   };
