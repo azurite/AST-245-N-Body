@@ -18,7 +18,8 @@ using Eigen::Vector3f;
 typedef Matrix<float, MATRIX_DATA_ROWS, Dynamic> MatrixData;
 
 #define FIELD_TENSOR_DIMENSIONS 3
-typedef Tensor<std::complex<float>, FIELD_TENSOR_DIMENSIONS> FieldTensor;
+typedef Tensor<std::complex<float>, FIELD_TENSOR_DIMENSIONS> FieldTensorCF;
+typedef Tensor<float, FIELD_TENSOR_DIMENSIONS> FieldTensorF;
 
 namespace Gravitysolver {
   class DataIO
@@ -49,14 +50,17 @@ namespace Gravitysolver {
     int Ng; // number of cells per dimension
     float h; // cell size
     float worldLen; // the size of the smallest enclosing cube of the galaxy
-    FieldTensor density;
-    FieldTensor greenFunction;
-    FieldTensor potential;
+    FieldTensorCF density;
+    FieldTensorCF greenFunction;
+    FieldTensorCF potential;
+    FieldTensorF ax;
+    FieldTensorF ay;
+    FieldTensorF az;
     Vector3i worldToGrid(float x, float y, float z);
     Vector3f gridToWorld(int i, int j, int k);
-    void fft3d(FieldTensor &t);
-    void ifft3d(FieldTensor &t);
-    void conv3d(FieldTensor &out, FieldTensor &in, FieldTensor &kernel);
+    void fft3d(FieldTensorCF &t);
+    void ifft3d(FieldTensorCF &t);
+    void conv3d(FieldTensorCF &out, FieldTensorCF &in, FieldTensorCF &kernel);
   public:
     PM(int numGridCells);
     void solve();

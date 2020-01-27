@@ -184,7 +184,9 @@ const MatrixData &Gravitysolver::Direct::data()
 
 Gravitysolver::PM::PM(int numGridCells)
 {
-  if(numGridCells > 0) {
+  // The Tensor in Eigen experiences a strange case of std::bad_alloc()
+  // if it has more than 776 = 2*388 complex valued elements per dimension
+  if(numGridCells > 0 && numGridCells <= 388) {
     Ng = numGridCells;
   }
   else {
@@ -228,7 +230,7 @@ Vector3f Gravitysolver::PM::gridToWorld(int i, int j, int k)
   return worldCoor;
 }
 
-void Gravitysolver::PM::fft3d(FieldTensor &t)
+void Gravitysolver::PM::fft3d(FieldTensorCF &t)
 {
   const int x = t.dimension(0);
   const int y = t.dimension(1);
@@ -272,7 +274,7 @@ void Gravitysolver::PM::fft3d(FieldTensor &t)
   }
 }
 
-void Gravitysolver::PM::ifft3d(FieldTensor &t)
+void Gravitysolver::PM::ifft3d(FieldTensorCF &t)
 {
   const int x = t.dimension(0);
   const int y = t.dimension(1);
@@ -299,7 +301,7 @@ void Gravitysolver::PM::ifft3d(FieldTensor &t)
   }
 }
 
-void Gravitysolver::PM::conv3d(FieldTensor &out, FieldTensor &in, FieldTensor &kernel)
+void Gravitysolver::PM::conv3d(FieldTensorCF &out, FieldTensorCF &in, FieldTensorCF &kernel)
 {
   int x = in.dimension(0);
   int y = in.dimension(1);
@@ -338,6 +340,78 @@ void Gravitysolver::PM::solve()
   std::cout << "Ng:         " << Ng << std::endl;
   std::cout << "h:          " << h << std::endl;
   std::cout << "---------------------------" << std::endl;
+
+  density.resize(2*Ng, 2*Ng, 2*Ng);
+  greenFunction.resize(2*Ng, 2*Ng, 2*Ng);
+  potential.resize(2*Ng, 2*Ng, 2*Ng);
+
+  ax.resize(Ng, Ng, Ng);
+  ay.resize(Ng, Ng, Ng);
+  az.resize(Ng, Ng, Ng);
+
+  // density field construction
+  for(int col = 0; col < particles.cols(); col++) {
+    float m = particles(0, col);
+    float px = particles(1, col);
+    float py = particles(2, col);
+    float pz = particles(3, col);
+
+    // (NGP)
+    Vector3i ti = worldToGrid(px, py, pz);
+    density(ti(0), ti(1), ti(2)) += (m / (h*h*h));
+  }
+
+  // green's function construction
+  for(int i = 0; i < Ng; i++) {
+    for(int j = 0; j < Ng; j++) {
+      for(int k = 0; k < Ng; k++) {
+        Vector3f worldPos = gridToWorld(i, j, k);
+
+        // Assumption: G = 1
+        float res = -1.0 / worldPos.norm();
+
+        // make the function symmetric accross all axes
+        greenFunction(i,               j,            k) = res;
+        greenFunction(i,               j,     2*Ng-k-1) = res;
+        greenFunction(i,        2*Ng-j-1,            k) = res;
+        greenFunction(i,        2*Ng-j-1,     2*Ng-k-1) = res;
+        greenFunction(2*Ng-i-1,        j,            k) = res;
+        greenFunction(2*Ng-i-1,        j,     2*Ng-k-1) = res;
+        greenFunction(2*Ng-i-1, 2*Ng-j-1,            k) = res;
+        greenFunction(2*Ng-i-1, 2*Ng-j-1,     2*Ng-k-1) = res;
+      }
+    }
+  }
+
+  // solve the poisson equation to get the potential
+  conv3d(potential, density, greenFunction);
+
+  // calculate acceleration field from potential
+  for(int i = 1; i < Ng - 1; i++) {
+    for(int j = 1; j < Ng - 1; j++) {
+      for(int k = 1; k < Ng - 1; k++) {
+        ax(i, j, k) = -(potential(i+1,j,k).real() - potential(i-1,j,k).real()) / (2*h);
+        ay(i, j, k) = -(potential(i,j+1,k).real() - potential(i,j-1,k).real()) / (2*h);
+        az(i, j, k) = -(potential(i,j,k+1).real() - potential(i,j,k-1).real()) / (2*h);
+      }
+    }
+  }
+
+  // interpolate acceleration field back from mesh to particles
+  for(int col = 0; col < particles.cols(); col++) {
+    float m = particles(0, col);
+    float px = particles(1, col);
+    float py = particles(2, col);
+    float pz = particles(3, col);
+
+    // (NGP)
+    Vector3i ti = worldToGrid(px, py, pz);
+
+    // F = m*a
+    particles(7, col) = m * ax(ti(0), ti(1), ti(2));
+    particles(8, col) = m * ay(ti(0), ti(1), ti(2));
+    particles(9, col) = m * az(ti(0), ti(1), ti(2));
+  }
 }
 
 const MatrixData &Gravitysolver::PM::data()
