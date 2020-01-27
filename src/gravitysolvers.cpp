@@ -219,7 +219,6 @@ Vector3i Gravitysolver::PM::worldToGrid(float x, float y, float z)
 */
 Vector3f Gravitysolver::PM::gridToWorld(int i, int j, int k)
 {
-  float h = worldLen / Ng; // cell size
   Vector3f worldCoor;
 
   worldCoor(0) = (i * worldLen / Ng) - (worldLen / 2) + (h / 2);
