@@ -30,3 +30,6 @@ main: $(OBJ)
 
 clean:
 	rm -f $(ODIR)/*.o *.out
+
+clean-data:
+	rm data/*.dat.output_pos.txt data/*.dat.output_energy.txt data/*.dat.output_meta.txt *.png
