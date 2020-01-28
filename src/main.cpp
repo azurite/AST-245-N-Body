@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <first_task.hpp>
+#include <second_task.hpp>
 
 #include <gravitysolvers.hpp>
 #include <hermite.hpp>
@@ -35,7 +36,8 @@ void precompute_nbody_forces()
 
 int main(int argc, char **argv)
 {
-  //precompute_nbody_forces();
-  first_task();
+  // precompute_nbody_forces();
+  // first_task();
+  second_task();
   return 0;
 }
