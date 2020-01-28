@@ -16,6 +16,15 @@ void Hermite::integrate(float dt, int numSteps)
   totalData = MatrixXf::Zero(3, numSteps * N);
   energy = VectorXf::Zero(numSteps);
 
+  std::cout << "starting integration of: " << filename << std::endl;
+  std::cout << "-------------------------------------------" << std::endl;
+  std::cout << "N:              " << N << std::endl;
+  std::cout << "dt:             " << dt << std::endl;
+  std::cout << "softening:      " << eps << std::endl;
+  std::cout << "time interval:  [0, " << (numSteps * dt) << "]" << std::endl;
+  std::cout << "-------------------------------------------" << std::endl;
+  std::cout << std::endl;
+
   for(int step = 0; step < numSteps; step++) {
     totalData.block(0, step*N, 3, N) = particles.block(1, 0, 3, N);
 
@@ -198,7 +207,6 @@ bool Hermite::readData(const std::string &filename)
     }
 
     infile >> eps;
-    std::cout << "softening: " << eps << std::endl;
 
     return true;
   }
