@@ -3,6 +3,7 @@
 #include <first_task.hpp>
 
 #include <gravitysolvers.hpp>
+#include <hermite.hpp>
 
 void precompute_nbody_forces()
 {
