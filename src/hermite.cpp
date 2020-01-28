@@ -9,9 +9,22 @@ Hermite::Hermite()
   eps = 0.01; // all files and particles have the same softening
   N = 0;
   filename = "";
+  lean = false;
 }
 
-void Hermite::integrate(float dt, int numSteps)
+void Hermite::enableLean()
+{
+    if(!lean)
+      lean = true;
+}
+
+void Hermite::disableLean()
+{
+  if(lean)
+    lean = false;
+}
+
+void Hermite::integrate(double dt, int numSteps)
 {
   std::cout << "starting integration of: " << filename << std::endl;
   std::cout << "-------------------------------------------" << std::endl;
@@ -22,8 +35,8 @@ void Hermite::integrate(float dt, int numSteps)
   std::cout << "-------------------------------------------" << std::endl;
   std::cout << std::endl;
 
-  totalData = MatrixXf::Zero(3, numSteps * N);
-  energy = VectorXf::Zero(numSteps);
+  totalData = MatrixXd::Zero(3, numSteps * N);
+  energy = VectorXd::Zero(numSteps);
 
   this->dt = dt;
   t = 0;
@@ -37,15 +50,17 @@ void Hermite::integrate(float dt, int numSteps)
   }
 
   // we want the relative energy error
-  energy = (((energy(0) * VectorXf::Ones(numSteps)) - energy) / energy(0)).cwiseAbs();
+  energy = (((energy(0) * VectorXd::Ones(numSteps)) - energy) / energy(0)).cwiseAbs();
 
   // write particle positions to file
-  std::ofstream file_pos(filename + ".output_pos.txt");
-  for(int i = 0; i < totalData.rows(); i++) {
-    for(int j = 0; j < totalData.cols(); j++) {
-      file_pos << totalData(i, j) << " ";
+  if(!lean) {
+    std::ofstream file_pos(filename + ".output_pos.txt");
+    for(int i = 0; i < totalData.rows(); i++) {
+      for(int j = 0; j < totalData.cols(); j++) {
+        file_pos << totalData(i, j) << " ";
+      }
+      file_pos << std::endl;
     }
-    file_pos << std::endl;
   }
 
   // write energy to file
@@ -62,12 +77,12 @@ void Hermite::integrate(float dt, int numSteps)
 
 void Hermite::computeEnergy(int step)
 {
-  float etot = .0;
+  double etot = .0;
 
-  float mi, mj, dx, dy, dz, vx, vy, vz;
+  double mi, mj, dx, dy, dz, vx, vy, vz;
 
   for(int i = 0; i < N; i++) {
-    float subtract = .0;
+    double subtract = .0;
     mi = particles(0, i);
     vx = particles(4, i);
     vy = particles(5, i);
@@ -89,12 +104,12 @@ void Hermite::computeEnergy(int step)
   energy(step) = etot;
 }
 
-MatrixXf Hermite::computeForces(const MatrixXf mass, const MatrixXf pos, const MatrixXf vel)
+MatrixXd Hermite::computeForces(const MatrixXd mass, const MatrixXd pos, const MatrixXd vel)
 {
-  float mi, mj, dx, dy, dz, dvx, dvy, dvz, sqrtInvDist, sqrtInvDist3, sqrtInvDist5, vdotr, ax, ay, az, jx, jy, jz;
+  double mi, mj, dx, dy, dz, dvx, dvy, dvz, sqrtInvDist, sqrtInvDist3, sqrtInvDist5, vdotr, ax, ay, az, jx, jy, jz;
 
   // first 3 rows hold the acceleration vectors, last 3 rows hold the jerk vectors
-  MatrixXf acc_and_jerk = MatrixXf::Zero(6, N);
+  MatrixXd acc_and_jerk = MatrixXd::Zero(6, N);
 
   for(int i = 0; i < N; i++) {
     for(int j = i + 1; j < N; j++) {
@@ -143,11 +158,11 @@ MatrixXf Hermite::computeForces(const MatrixXf mass, const MatrixXf pos, const M
 
 void Hermite::step()
 {
-  MatrixXf masses = particles.topRows(1);
+  MatrixXd masses = particles.topRows(1);
   x0 = particles.block(1, 0, 3, N);
   v0 = particles.block(4, 0, 3, N);
 
-  MatrixXf acc_and_jerk0 = computeForces(masses, x0, v0);
+  MatrixXd acc_and_jerk0 = computeForces(masses, x0, v0);
   a0 = acc_and_jerk0.topRows(3);
   jerk0 = acc_and_jerk0.bottomRows(3);
 
@@ -155,13 +170,19 @@ void Hermite::step()
   xp = (x0 + (v0 * dt) + (a0 * (0.5 * dt * dt)) + (jerk0 * (0.1667 * dt * dt * dt)));
   vp = (v0 + (a0 * dt) + (jerk0 * (0.5 * dt * dt)));
 
-  MatrixXf acc_and_jerk1 = computeForces(masses, xp, vp);
+  MatrixXd acc_and_jerk1 = computeForces(masses, xp, vp);
   a1 = acc_and_jerk1.topRows(3);
   jerk1 = acc_and_jerk1.bottomRows(3);
 
   // corrector step
   v1 = v0 + ((a0 + a1) * 0.5 * dt) + ((jerk0 - jerk1) * 0.0833 * dt * dt);
   x1 = x0 + ((v0 + v1) * 0.5 * dt) + ((a0 - a1) * 0.0833 * dt * dt);
+
+  // https://gravidy.xyz/include/integrator.html
+  // MatrixXd a20 = (-6 * (a0 - a1) - dt * (4 * jerk0 + 2 * jerk1));
+  // MatrixXd a30 = (-12 * (a0 - a1) - 6 * dt * (jerk0 + jerk1));
+  // x1 = xp + (0.041667 * dt*dt * a20) + (0.00833 * dt*dt * a30);
+  // v1 = vp + (0.25 * dt * a20) + (0.041667 * dt * a30);
 
   // assign next positions and velocities to original particle set
   particles.block(1, 0, 3, N) = x1;
@@ -176,7 +197,7 @@ bool Hermite::readData(const std::string &filename)
   if(infile.is_open()) {
     infile >> numParticles >> numGasParticles >> numStarParticles;
 
-    particles = Eigen::MatrixXf::Zero(HERMITE_DATA_ROWS, numParticles);
+    particles = Eigen::MatrixXd::Zero(HERMITE_DATA_ROWS, numParticles);
     N = numParticles;
 
     this->filename = filename;
