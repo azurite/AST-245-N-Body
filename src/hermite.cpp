@@ -13,9 +13,6 @@ Hermite::Hermite()
 
 void Hermite::integrate(float dt, int numSteps)
 {
-  totalData = MatrixXf::Zero(3, numSteps * N);
-  energy = VectorXf::Zero(numSteps);
-
   std::cout << "starting integration of: " << filename << std::endl;
   std::cout << "-------------------------------------------" << std::endl;
   std::cout << "N:              " << N << std::endl;
@@ -24,6 +21,12 @@ void Hermite::integrate(float dt, int numSteps)
   std::cout << "time interval:  [0, " << (numSteps * dt) << "]" << std::endl;
   std::cout << "-------------------------------------------" << std::endl;
   std::cout << std::endl;
+
+  totalData = MatrixXf::Zero(3, numSteps * N);
+  energy = VectorXf::Zero(numSteps);
+
+  this->dt = dt;
+  t = 0;
 
   for(int step = 0; step < numSteps; step++) {
     totalData.block(0, step*N, 3, N) = particles.block(1, 0, 3, N);
