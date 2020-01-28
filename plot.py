@@ -4,6 +4,9 @@ from numpy import loadtxt
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+from matplotlib import rcParams
+rcParams.update({'figure.autolayout': True})
+
 basedir_data = "data/"
 basedir_plot = ""
 metaname = basedir_data + "meta.txt"
@@ -11,7 +14,8 @@ metaname = basedir_data + "meta.txt"
 files = [
         "data_n2_circular.dat.output",
         "data_n2_elliptic.dat.output",
-        "data_n32.dat.output"
+        "data_n32.dat.output",
+        "data_n64.dat.output"
     ]
 
 # plot the positions of the integrations
@@ -53,7 +57,7 @@ for file in files:
         time = np.arange(0, T, T / len(energy))
         fig, ax = plt.subplots()
 
-        ax.plot(time, energy, "b", label=file)
+        ax.plot(time, energy, "b", label='dt = %f' % dt)
         ax.set(
             xlabel='time',
             ylabel='|[E(0) - E(t)]/E(0)|',
