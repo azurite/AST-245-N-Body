@@ -10,6 +10,7 @@ Hermite::Hermite()
   N = 0;
   filename = "";
   lean = false;
+  blockSize = 1;
 }
 
 void Hermite::enableLean()
@@ -22,6 +23,12 @@ void Hermite::disableLean()
 {
   if(lean)
     lean = false;
+}
+
+void Hermite::setBlockSize(int size) {
+  if(size >= 1) {
+    blockSize = size;
+  }
 }
 
 void Hermite::integrate(double dt, int numSteps)
@@ -56,7 +63,7 @@ void Hermite::integrate(double dt, int numSteps)
   if(!lean) {
     std::ofstream file_pos(filename + ".output_pos.txt");
     for(int i = 0; i < totalData.rows(); i++) {
-      for(int j = 0; j < totalData.cols(); j++) {
+      for(int j = 0; j <= totalData.cols() - blockSize; j += blockSize) {
         file_pos << totalData(i, j) << " ";
       }
       file_pos << std::endl;
@@ -65,7 +72,7 @@ void Hermite::integrate(double dt, int numSteps)
 
   // write energy to file
   std::ofstream file_energy(filename + ".output_energy.txt");
-  for(int i = 0; i < energy.size(); i++) {
+  for(int i = 0; i <= energy.size() - blockSize; i += blockSize) {
     file_energy << energy(i) << " ";
   }
   file_energy << std::endl;

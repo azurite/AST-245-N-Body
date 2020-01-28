@@ -33,13 +33,15 @@ private:
   VectorXd energy;
   std::string filename;
   bool lean; // if set to true solver will not write position files because they can get quite large
+  int blockSize;
   Matrix<double, 3, Dynamic> totalData; // positions of all particles over all time steps
-  
+
   void computeEnergy(int step);
 public:
   Hermite();
   void enableLean();
   void disableLean();
+  void setBlockSize(int size);
   void step();
   MatrixXd computeForces(const MatrixXd mass, const MatrixXd pos, const MatrixXd vel);
   void integrate(double dt, int numSteps);
