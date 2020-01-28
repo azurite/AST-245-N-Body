@@ -15,8 +15,8 @@ Hermite::Hermite()
 
 void Hermite::enableLean()
 {
-    if(!lean)
-      lean = true;
+  if(!lean)
+    lean = true;
 }
 
 void Hermite::disableLean()
