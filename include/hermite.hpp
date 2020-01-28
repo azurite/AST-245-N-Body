@@ -2,6 +2,7 @@
 
 using Eigen::Matrix;
 using Eigen::MatrixXf;
+using Eigen::VectorXf;
 using Eigen::Dynamic;
 
 #ifndef HERMITE_H
@@ -13,6 +14,7 @@ class Hermite
 {
 private:
   int N; // number of particles
+  float t; // current simulation time
   float dt; // integration timestep
   float eps; // softening
   Matrix<float, HERMITE_DATA_ROWS, Dynamic> particles;
@@ -24,9 +26,15 @@ private:
   Matrix<float, 3, Dynamic> a1; // corrected accelerations
   Matrix<float, 3, Dynamic> jerk0; // predicted jerks
   Matrix<float, 3, Dynamic> jerk1; // corrected jerks
+  VectorXf energy;
+  std::string filename;
+  Matrix<float, 3, Dynamic> totalData;
+  void computeEnergy(int step);
+  void writePos();
 public:
   Hermite();
   void step();
+  MatrixXf computeForces(const MatrixXf mass, const MatrixXf pos, const MatrixXf vel);
   void integrate(int numSteps);
   bool readData(const std::string &filename);
 };
