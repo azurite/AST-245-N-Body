@@ -11,7 +11,7 @@ Hermite::Hermite()
   filename = "";
 }
 
-void Hermite::integrate(int numSteps)
+void Hermite::integrate(float dt, int numSteps)
 {
   totalData = MatrixXf::Zero(3, numSteps * N);
   energy = VectorXf::Zero(numSteps);
@@ -28,7 +28,13 @@ void Hermite::integrate(int numSteps)
   energy = (((energy(0) * VectorXf::Ones(numSteps)) - energy) / energy(0)).cwiseAbs();
 
   // write particle positions to file
-  this->writePos();
+  std::ofstream file_pos(filename + ".output_pos.txt");
+  for(int i = 0; i < totalData.rows(); i++) {
+    for(int j = 0; j < totalData.cols(); j++) {
+      file_pos << totalData(i, j) << " ";
+    }
+    file_pos << std::endl;
+  }
 
   // write energy to file
   std::ofstream file_energy(filename + ".output_energy.txt");
@@ -38,8 +44,8 @@ void Hermite::integrate(int numSteps)
   file_energy << std::endl;
 
   // write meta data to file
-  std::ofstream file("data/meta.txt");
-  file << dt << " " << (numSteps * dt) << " " << eps << std::endl;
+  std::ofstream file_meta(filename + ".output_meta.txt");
+  file_meta << dt << " " << (numSteps * dt) << " " << eps << std::endl;
 }
 
 void Hermite::computeEnergy(int step)
@@ -127,19 +133,17 @@ void Hermite::step()
 {
   MatrixXf masses = particles.topRows(1);
   x0 = particles.block(1, 0, 3, N);
-  v0 =  particles.block(4, 0, 3, N);
+  v0 = particles.block(4, 0, 3, N);
 
   MatrixXf acc_and_jerk0 = computeForces(masses, x0, v0);
-
   a0 = acc_and_jerk0.topRows(3);
   jerk0 = acc_and_jerk0.bottomRows(3);
 
   // predictor step
-  x0 = (x0 + (v0 * dt) + (a0 * (0.5 * dt * dt)) + (jerk0 * (0.1667 * dt * dt * dt)));
-  v0 = (v0 + (a0 * dt) + (jerk0 * (0.5 * dt * dt)));
+  xp = (x0 + (v0 * dt) + (a0 * (0.5 * dt * dt)) + (jerk0 * (0.1667 * dt * dt * dt)));
+  vp = (v0 + (a0 * dt) + (jerk0 * (0.5 * dt * dt)));
 
-  MatrixXf acc_and_jerk1 = computeForces(masses, x0, v0);
-
+  MatrixXf acc_and_jerk1 = computeForces(masses, xp, vp);
   a1 = acc_and_jerk1.topRows(3);
   jerk1 = acc_and_jerk1.bottomRows(3);
 
@@ -147,6 +151,7 @@ void Hermite::step()
   v1 = v0 + ((a0 + a1) * 0.5 * dt) + ((jerk0 - jerk1) * 0.0833 * dt * dt);
   x1 = x0 + ((v0 + v1) * 0.5 * dt) + ((a0 - a1) * 0.0833 * dt * dt);
 
+  // assign next positions and velocities to original particle set
   particles.block(1, 0, 3, N) = x1;
   particles.block(4, 0, 3, N) = v1;
 }
@@ -192,21 +197,12 @@ bool Hermite::readData(const std::string &filename)
       infile >> particles(6, i); // vz
     }
 
+    infile >> eps;
+    std::cout << "softening: " << eps << std::endl;
+
     return true;
   }
 
   std::cout << "Hermite::readData(\"" << filename << "\") " << "could not read file" << std::endl;
   return false;
-}
-
-void Hermite::writePos()
-{
-    std::ofstream file(filename + ".output_pos.txt");
-
-    for(int i = 0; i < totalData.rows(); i++) {
-      for(int j = 0; j < totalData.cols(); j++) {
-        file << totalData(i, j) << " ";
-      }
-      file << std::endl;
-    }
 }
