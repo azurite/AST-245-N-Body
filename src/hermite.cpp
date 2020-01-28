@@ -145,7 +145,7 @@ void Hermite::step()
 
   // corrector step
   v1 = v0 + ((a0 + a1) * 0.5 * dt) + ((jerk0 - jerk1) * 0.0833 * dt * dt);
-  x1 = x0 + ((x0 + v0) * 0.5 * dt) + ((a0 - a1) * 0.0833 * dt * dt);
+  x1 = x0 + ((v0 + v1) * 0.5 * dt) + ((a0 - a1) * 0.0833 * dt * dt);
 
   particles.block(1, 0, 3, N) = x1;
   particles.block(4, 0, 3, N) = v1;
