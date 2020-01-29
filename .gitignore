@@ -5,3 +5,9 @@
 data/*.ascii
 data/*.dat
 data/*.txt
+
+# contains additional papers and notes useful for the project
+notes
+
+# contains the plots for the final presentation
+plots
