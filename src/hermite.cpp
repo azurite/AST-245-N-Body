@@ -82,7 +82,7 @@ void Hermite::integrate(double dt, int numSteps)
 
   // write meta data to file
   std::ofstream file_meta(filename + ".output_meta.txt");
-  file_meta << dt << " " << (numSteps * dt) << " " << eps << std::endl;
+  file_meta << N << " " << dt << " " << (numSteps * dt) << " " << eps << std::endl;
 }
 
 void Hermite::computeEnergy(int step)

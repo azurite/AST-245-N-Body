@@ -32,6 +32,8 @@ void precompute_nbody_forces()
 
     std::cout << "Done [" << i << "/" << total << "] time: " << time.count() << "s" << std::endl;
   }
+
+  delete solver;
 }
 
 int main(int argc, char **argv)

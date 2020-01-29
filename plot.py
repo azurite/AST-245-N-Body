@@ -28,9 +28,10 @@ for file in files:
     metaname = basedir_data + file + "_meta.txt"
 
     if os.path.exists(fullname):
-        dt, T, eps = loadtxt(metaname)
+        N, dt, T, eps = loadtxt(metaname)
         data = loadtxt(fullname)
         textstr = "\n".join((
+            r'N = %d' % N,
             r'Softening = %g' % (eps),
             r'Time Step = %g' % (dt),
             r'Time Interval = [0, %g]' % (T)
@@ -56,12 +57,16 @@ for file in files:
     metaname = basedir_data + file + "_meta.txt"
 
     if os.path.exists(fullname):
-        dt, T, eps = loadtxt(metaname)
+        N, dt, T, eps = loadtxt(metaname)
         energy = loadtxt(fullname)
         time = np.arange(0, T, T / len(energy))
         fig, ax = plt.subplots(figsize=plotSize)
 
-        labelstr = " ".join((r'dt = %g' % dt, r'${\epsilon}$ = %g' % eps))
+        labelstr = " ".join((
+            r'${\Delta}$t = %g' % dt,
+            r'${\epsilon}$ = %g' % eps,
+            r'N = %d' % N
+        ))
 
         ax.plot(time, energy, "b", label=labelstr)
         ax.set(
