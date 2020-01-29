@@ -27,9 +27,9 @@ for file in files:
         dt, T, eps = loadtxt(metaname)
         data = loadtxt(fullname)
         textstr = "\n".join((
-            r'Softening = %f' % (eps),
-            r'Time Step = %f' % (dt),
-            r'Time Interval = [0, %f]' % (T)
+            r'Softening = %g' % (eps),
+            r'Time Step = %g' % (dt),
+            r'Time Interval = [0, %g]' % (T)
         ))
 
         fig = plt.figure()
@@ -39,7 +39,7 @@ for file in files:
             xs=data[0],
             ys=data[1],
             zs=data[2],
-            s=0.1,
+            s=0.02,
             label="Planet Trajectory"
         )
         ax.legend()
@@ -57,7 +57,9 @@ for file in files:
         time = np.arange(0, T, T / len(energy))
         fig, ax = plt.subplots()
 
-        ax.plot(time, energy, "b", label='dt = %f' % dt)
+        labelstr = " ".join((r'dt = %g' % dt, r'${\epsilon}$ = %g' % eps))
+
+        ax.plot(time, energy, "b", label=labelstr)
         ax.set(
             xlabel='time',
             ylabel='|[E(0) - E(t)]/E(0)|',
