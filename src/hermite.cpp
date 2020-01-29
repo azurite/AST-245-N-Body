@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <chrono>
 #include <hermite.hpp>
 
 Hermite::Hermite()
@@ -35,18 +36,18 @@ void Hermite::integrate(double dt, int numSteps)
 {
   std::cout << "starting integration of: " << filename << std::endl;
   std::cout << "-------------------------------------------" << std::endl;
-  std::cout << "N:              " << N << std::endl;
-  std::cout << "dt:             " << dt << std::endl;
-  std::cout << "softening:      " << eps << std::endl;
-  std::cout << "time interval:  [0, " << (numSteps * dt) << "]" << std::endl;
-  std::cout << "-------------------------------------------" << std::endl;
-  std::cout << std::endl;
+  std::cout << "N:                " << N << std::endl;
+  std::cout << "dt:               " << dt << std::endl;
+  std::cout << "softening:        " << eps << std::endl;
+  std::cout << "time interval:    [0, " << (numSteps * dt) << "]" << std::endl;
 
   totalData = MatrixXd::Zero(3, (numSteps / blockSize) * N);
   energy = VectorXd::Zero(numSteps);
 
   this->dt = dt;
   t = 0;
+
+  auto start = std::chrono::high_resolution_clock::now();
 
   for(int step = 0; step < numSteps; step++) {
     if(step % blockSize == 0) {
@@ -61,6 +62,13 @@ void Hermite::integrate(double dt, int numSteps)
 
   // we want the relative energy error
   energy = (((energy(0) * VectorXd::Ones(numSteps)) - energy) / energy(0)).cwiseAbs();
+
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> time = end - start;
+
+  std::cout << "simulation time:  " << time.count() << "s" << std::endl;
+  std::cout << "-------------------------------------------" << std::endl;
+  std::cout << std::endl;
 
   // write particle positions to file
   if(!lean) {
