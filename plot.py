@@ -11,11 +11,15 @@ basedir_data = "data/"
 basedir_plot = ""
 metaname = basedir_data + "meta.txt"
 
+plotSize = (12,8)
+
 files = [
         "data_n2_circular.dat.output",
         "data_n2_elliptic.dat.output",
         "data_n32.dat.output",
-        "data_n64.dat.output"
+        "data_n64.dat.output",
+        "data_n128.dat.output",
+        "data_n256.dat.output"
     ]
 
 # plot the positions of the integrations
@@ -32,7 +36,7 @@ for file in files:
             r'Time Interval = [0, %g]' % (T)
         ))
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=plotSize)
         fig.text(0.05, 0.85, textstr, fontsize=12)
         ax = fig.add_subplot(111, projection='3d')
         ax.scatter(
@@ -55,7 +59,7 @@ for file in files:
         dt, T, eps = loadtxt(metaname)
         energy = loadtxt(fullname)
         time = np.arange(0, T, T / len(energy))
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=plotSize)
 
         labelstr = " ".join((r'dt = %g' % dt, r'${\epsilon}$ = %g' % eps))
 
