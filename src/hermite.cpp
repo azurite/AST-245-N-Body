@@ -42,14 +42,17 @@ void Hermite::integrate(double dt, int numSteps)
   std::cout << "-------------------------------------------" << std::endl;
   std::cout << std::endl;
 
-  totalData = MatrixXd::Zero(3, numSteps * N);
+  totalData = MatrixXd::Zero(3, (numSteps / blockSize) * N);
   energy = VectorXd::Zero(numSteps);
 
   this->dt = dt;
   t = 0;
 
   for(int step = 0; step < numSteps; step++) {
-    totalData.block(0, step*N, 3, N) = particles.block(1, 0, 3, N);
+    if(step % blockSize == 0) {
+      totalData.block(0, (step / blockSize)*N, 3, N) = particles.block(1, 0, 3, N);
+    }
+    //totalData.block(0, step*N, 3, N) = particles.block(1, 0, 3, N);
 
     this->computeEnergy(step);
     this->step();
@@ -63,7 +66,7 @@ void Hermite::integrate(double dt, int numSteps)
   if(!lean) {
     std::ofstream file_pos(filename + ".output_pos.txt");
     for(int i = 0; i < totalData.rows(); i++) {
-      for(int j = 0; j <= totalData.cols() - blockSize; j += blockSize) {
+      for(int j = 0; j < totalData.cols(); j++) {
         file_pos << totalData(i, j) << " ";
       }
       file_pos << std::endl;
@@ -184,12 +187,6 @@ void Hermite::step()
   // corrector step
   v1 = v0 + ((a0 + a1) * 0.5 * dt) + ((jerk0 - jerk1) * 0.0833 * dt * dt);
   x1 = x0 + ((v0 + v1) * 0.5 * dt) + ((a0 - a1) * 0.0833 * dt * dt);
-
-  // https://gravidy.xyz/include/integrator.html
-  // MatrixXd a20 = (-6 * (a0 - a1) - dt * (4 * jerk0 + 2 * jerk1));
-  // MatrixXd a30 = (-12 * (a0 - a1) - 6 * dt * (jerk0 + jerk1));
-  // x1 = xp + (0.041667 * dt*dt * a20) + (0.00833 * dt*dt * a30);
-  // v1 = vp + (0.25 * dt * a20) + (0.041667 * dt * a30);
 
   // assign next positions and velocities to original particle set
   particles.block(1, 0, 3, N) = x1;
