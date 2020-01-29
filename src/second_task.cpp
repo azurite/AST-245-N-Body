@@ -3,8 +3,6 @@
 #include <second_task.hpp>
 #include <hermite.hpp>
 
-
-
 void second_task()
 {
   const std::vector<std::string> files = {
