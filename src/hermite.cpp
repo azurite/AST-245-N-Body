@@ -7,7 +7,7 @@ Hermite::Hermite()
 {
   t = .0;
   dt = 0.01;
-  eps = 0.01; // all files and particles have the same softening
+  eps = 0.01;
   N = 0;
   filename = "";
   lean = false;
@@ -46,7 +46,7 @@ void Hermite::integrate(double dt, int numSteps)
   std::cout << "softening:        " << eps << std::endl;
   std::cout << "time interval:    [0, " << (numSteps * dt) << "]" << std::endl;
 
-  totalData = MatrixXd::Zero(3, (numSteps / blockSize) * N);
+  totalData = MatrixXd::Zero(3, (numSteps / blockSize + 1) * N);
   energy = VectorXd::Zero(numSteps);
 
   this->dt = dt;
@@ -58,7 +58,6 @@ void Hermite::integrate(double dt, int numSteps)
     if(step % blockSize == 0) {
       totalData.block(0, (step / blockSize)*N, 3, N) = particles.block(1, 0, 3, N);
     }
-    //totalData.block(0, step*N, 3, N) = particles.block(1, 0, 3, N);
 
     this->computeEnergy(step);
     this->step();
