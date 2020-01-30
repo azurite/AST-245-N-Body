@@ -47,6 +47,7 @@ public:
   void setSoftening(double newEps);
   void integrate(double dt, int numSteps);
   bool readData(const std::string &filename);
+  const Matrix<double, 3, Dynamic> &data();
 };
 
 #endif // HERMITE_H

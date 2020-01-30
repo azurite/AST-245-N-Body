@@ -254,3 +254,8 @@ bool Hermite::readData(const std::string &filename)
   std::cout << "Hermite::readData(\"" << filename << "\") " << "could not read file" << std::endl;
   return false;
 }
+
+const Matrix<double, 3, Dynamic> &Hermite::data()
+{
+  return totalData;
+}
