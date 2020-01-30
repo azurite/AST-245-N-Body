@@ -38,8 +38,8 @@ void precompute_nbody_forces()
 
 int main(int argc, char **argv)
 {
-  // precompute_nbody_forces();
-  // first_task();
+  precompute_nbody_forces();
+  first_task();
   second_task();
   return 0;
 }
