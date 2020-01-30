@@ -32,6 +32,11 @@ void Hermite::setBlockSize(int size) {
   }
 }
 
+void Hermite::setSoftening(double newEps)
+{
+  eps = newEps;
+}
+
 void Hermite::integrate(double dt, int numSteps)
 {
   std::cout << "starting integration of: " << filename << std::endl;

@@ -42,6 +42,7 @@ public:
   void enableLean();
   void disableLean();
   void setBlockSize(int size);
+  void setSoftening(double newEps);
   void step();
   MatrixXd computeForces(const MatrixXd mass, const MatrixXd pos, const MatrixXd vel);
   void integrate(double dt, int numSteps);
