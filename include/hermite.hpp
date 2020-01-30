@@ -37,14 +37,14 @@ private:
   Matrix<double, 3, Dynamic> totalData; // positions of all particles over all time steps
 
   void computeEnergy(int step);
+  void step();
+  MatrixXd computeForces(const MatrixXd mass, const MatrixXd pos, const MatrixXd vel);
 public:
   Hermite();
   void enableLean();
   void disableLean();
   void setBlockSize(int size);
   void setSoftening(double newEps);
-  void step();
-  MatrixXd computeForces(const MatrixXd mass, const MatrixXd pos, const MatrixXd vel);
   void integrate(double dt, int numSteps);
   bool readData(const std::string &filename);
 };
