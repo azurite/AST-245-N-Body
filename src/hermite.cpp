@@ -248,6 +248,22 @@ bool Hermite::readData(const std::string &filename)
 
     infile >> eps;
 
+    // exact mean inter-particle separation
+    /*
+    double meanDist = .0;
+
+    for(int i = 0; i < N; i++) {
+      for(int j = 0; j < N; j++) {
+          Vector3d xi = particles.block(1, i, 3, 1);
+          Vector3d xj = particles.block(1, j, 3, 1);
+          meanDist += (xi - xj).norm();
+      }
+    }
+
+    meanDist /= (N * (N - 1));
+    eps = (meanDist / 100);
+    */
+
     return true;
   }
 

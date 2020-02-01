@@ -79,6 +79,20 @@ void calculate_constants()
   epsilon = radius / std::pow(totalMass, 1.0/3.0);
   t_relax = compute_relaxation();
 
+  // exact mean inter-particle separation
+  /*
+  epsilon = .0;
+
+  for(Particle &p : particles) {
+    for(Particle &q : particles) {
+      epsilon += (p.r() - q.r()).norm();
+    }
+  }
+
+  long n = particles.size();
+  epsilon /= (n*(n-1));
+  */
+
   std::cout << "First Task        " << std::endl;
   std::cout << "------------------" << std::endl;
   std::cout << "  pMass:          " << pMass << std::endl;

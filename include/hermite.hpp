@@ -3,6 +3,7 @@
 using Eigen::Matrix;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using Eigen::Dynamic;
 
 #ifndef HERMITE_H
