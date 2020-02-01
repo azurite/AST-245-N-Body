@@ -10,9 +10,10 @@ SDIR = src
 ODIR = obj
 LDIR = lib
 LIBS = -lmgl2
+EIGEN = /usr/include/eigen3
 
 CXX = g++
-CXXFLAGS = -I lib/eigen3 -I $(IDIR) -O3
+CXXFLAGS = -I $(EIGEN) -I $(IDIR) -O3
 
 _DEPS = data.hpp particle.hpp gravitysolvers.hpp first_task.hpp second_task.hpp hermite.hpp
 DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))

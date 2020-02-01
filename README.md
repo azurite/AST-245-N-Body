@@ -4,7 +4,7 @@ This Repository contains the code for the N-Body project from the [UZH](https://
 
 ## Dependencies
 
-This repository contains everything you need to compile and run the code. You'll need [MathGL 2.0](http://mathgl.sourceforge.net/) or higher to plot the data of the first task and [Python 3](https://www.python.org/download/releases/3.0/) or higher to plot the data of the second task. Otherwise you only need a C++ compiler. The [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) library is included in the `lib` directory.
+You'll need [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for the code to compile. If needed change the `EIGEN` variable in the makefile to the path of your eigen source files. You'll need [MathGL 2.0](http://mathgl.sourceforge.net/) or higher to plot the data of the first task and [Python 3](https://www.python.org/download/releases/3.0/) or higher to plot the data of the second task.
 
 ## Usage
 
@@ -18,9 +18,7 @@ Computes the n-body forces from a set of initial conditions with the direct summ
 
 #### bool Gravitysolver::Direct::readDataOld( \<filename\> )
 
-Reads a set of initial conditions in the format according to the data provided by the project.
-
-The data file is made of a header and sequential arrays, as follows: Number of particles(N), Number of gas particles(NG), Number of star particles (NS).
+Reads a set of initial conditions in the format according to the data provided by the project. The data file is made of a header and sequential arrays, as follows: Number of particles(N), Number of gas particles(NG), Number of star particles (NS).
 
 ```
 N NG NS
