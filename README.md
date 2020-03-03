@@ -53,7 +53,7 @@ Sets the softening value used by the solver to the function's input.
 
 Computes the n-body forces acting on each particle with the direct summation algorithm.
 
-#### const MatrixData &MatrixGravitysolver::Direct::data()
+#### const MatrixData &Gravitysolver::Direct::data()
 
 Returns the current state (mass, position, velocity, force) of all particles in the form of a 10xN Eigen Matrix `Matrix<float, 10, Dynamic>` where the i-th column holds the state of the i-th particle in the form of `[mass, x, y, z, vx, vz, vz, fx, fy, fz]`. Note that until either `readDataOld()` or `readData()` have been called the output of the function remains uninitialized.
 
